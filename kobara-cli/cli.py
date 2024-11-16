@@ -1,28 +1,30 @@
-# cli.py
+#!/usr/bin/env python3
 import argparse
 import grpc
 from decimal import Decimal
-from generated import orderbook_pb2
-from generated import orderbook_pb2_grpc
+from generated.orderbook_pb2 import (
+    OrderRequest, GetOrderBookRequest, GetOrderStatusRequest,
+    Side, OrderType
+)
+from generated.orderbook_pb2_grpc import OrderBookServiceStub
 
 def connect():
     channel = grpc.insecure_channel('localhost:50051')
-    return orderbook_pb2_grpc.OrderBookServiceStub(channel)
+    return OrderBookServiceStub(channel)
 
 def place_order(stub, args):
-    request = orderbook_pb2.OrderRequest(
+    request = OrderRequest(
         id=args.id,
         price=str(Decimal(args.price)),
         quantity=str(Decimal(args.quantity)),
-        side=orderbook_pb2.Side.BID if args.side.upper() == "BID" else orderbook_pb2.Side.ASK,
-        order_type=orderbook_pb2.OrderType.LIMIT if args.type.upper() == "LIMIT"
-                  else orderbook_pb2.OrderType.MARKET
+        side=Side.BID if args.side.upper() == "BID" else Side.ASK,
+        order_type=OrderType.LIMIT if args.type.upper() == "LIMIT" else OrderType.MARKET
     )
     response = stub.PlaceOrder(request)
     print(f"Order placed: ID={response.id}, Status={response.status}")
 
 def get_book(stub, args):
-    request = orderbook_pb2.GetOrderBookRequest(depth=args.depth)
+    request = GetOrderBookRequest(depth=args.depth)
     response = stub.GetOrderBook(request)
 
     print("\nBids:")

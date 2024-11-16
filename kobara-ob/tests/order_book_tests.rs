@@ -1,6 +1,6 @@
 use rust_decimal_macros::dec;
 //use chrono::Utc;
-use kobara_ob::{OrderBook, Order, Side, OrderType, OrderStatus};
+use kobara_ob::core::{OrderBook, Order, Side, OrderType, OrderStatus};
 
 
 fn create_test_order(id: u64, price: rust_decimal::Decimal, quantity: rust_decimal::Decimal, side: Side, order_type: OrderType) -> Order {
