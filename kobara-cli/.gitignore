@@ -1,0 +1,23 @@
+*~
+generated/
+venv/
+__pycache__/
+*.py[cod]
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Generated protobuf files
+kobara-cli/kobara_cli/generated/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

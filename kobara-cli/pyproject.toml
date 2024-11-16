@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kobara-cli"
+version = "0.1.0"
+description = "CLI client for kobara Order Book"
+requires-python = ">=3.7"
+dependencies = [
+    "grpcio>=1.60.0",
+    "grpcio-tools>=1.60.0"
+]
+
+[project.scripts]
+kobara-cli = "kobara_cli.cli:main"
