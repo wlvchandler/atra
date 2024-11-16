@@ -1,14 +1,10 @@
 use rust_decimal::Decimal;
+use chrono::{DateTime, Utc};
+use std::cmp::Ordering;
 
-
-/*
- - Debug: enables enum to be formatted with {:?}  in `println!` or other
- - Clone: allows enum to be explicitly dup'd with `.clone()`
- - Copy:  makes copyable vs being moved (std::move default?)
- - PartialEq:  allows E == E and E |= E
- - Eq: equality comps are defined everywhere
- */
-
+//
+// enums
+//
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Side {
@@ -16,23 +12,44 @@ pub enum Side {
     Ask,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OrderType {
+    Limit,
+    Market,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OrderStatus {
+    Pending,
+    PartiallyFilled,
+    Filled,
+    Cancelled,
+}
+
+//
+// structs
+//
+
 #[derive(Debug, Clone, PartialEq, Eq)] // def dont want copy
 pub struct Order {
-    pub id: u64,
+    pub id: String,
     pub price: Decimal,
     pub quantity: Decimal,
+    pub remaining_quantity: Decimal,
     pub side: Side,
-    pub timestamp: u64,
+    pub order_type: OrderType,
+    pub status: OrderStatus,
+    pub timestamp: DateTime<Utc>,
 }
 
 impl Order {
-    pub fn new(id: u64, price: Decimal, quantity: Decimal, side: Side, timestamp: u64) -> Self {
+    pub fn new(id: u64, price: Decimal, quantity: Decimal, side: Side, order_type: OrderType) -> Self {
 	Self {
-	    id,
-	    price,
-	    quantity,
-	    side,
-	    timestamp,
+	    id, price, quantity,
+	    remaining_quantity: quantity,
+	    side, order_type,
+	    status: OrderStatus::Pending,
+	    timestamp: Utc::now(),
 	}
     }
 }

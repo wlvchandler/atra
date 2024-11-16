@@ -1,5 +1,11 @@
 use rust_decimal_macros::dec;
-use kobara_ob::{OrderBook, Order, Side};
+use chrono::Utc;
+use kobara_ob::{OrderBook, Order, Side, OrderType, OrderStatus};
+
+
+fn create_test_order(id: &str, price: rust_decimal::Decimal, quantity: rust_decimal::Decimal, side: Side, order_type: OrderType) -> Order {
+    Order::new(id.to_string(), price, quantity, side, order_type,);
+}
 
 
 #[test]
@@ -17,11 +23,12 @@ fn test_add_order() {
 fn test_duplicate_order_id() {
     let mut book = OrderBook::new();
 
-    let order1 = Order::new(1, dec!(100.0), dec!(10.0), Side::Bid, 1000);
-    let order2 = Order::new(1, dec!(101.0), dec!(20.0), Side::Ask, 1001);
+    book.place_order(create_test_order(1, dec!(100.0), dec!(10.0), Side::Bid, OrderType::Limit));
 
-    assert!(book.add_order(order1).is_ok());
-    assert!(book.add_order(order2).is_err());
+    let result = book.place_order(create_test_order(1, dec!(101.0), dec!(20.0), Side::Ask, OrderType::Limit));
+
+    assert_eq!(result.id, "1");
+    assert_eq!(result.price, dec!(100.0));
 }
 
 
@@ -43,13 +50,15 @@ fn test_cancel_order() {
 fn test_best_bid_ask() {
     let mut book = OrderBook::new();
 
-    book.add_order(Order::new(1, dec!(98.0), dec!(10.0), Side::Bid, 1000)).unwrap();
-    book.add_order(Order::new(2, dec!(99.0), dec!(10.0), Side::Bid, 1001)).unwrap();
-    book.add_order(Order::new(3, dec!(101.0), dec!(10.0), Side::Ask, 1002)).unwrap();
-    book.add_order(Order::new(4, dec!(102.0), dec!(10.0), Side::Ask, 1003)).unwrap();
+    book.add_order(create_test_order("1", dec!(98.0), dec!(10.0),  Side::Bid, OrderType::Limit));
+    book.add_order(create_test_order("2", dec!(99.0), dec!(10.0),  Side::Bid, OrderType::Limit));
+    book.add_order(create_test_order("3", dec!(101.0), dec!(10.0), Side::Ask, OrderType::Limit));
+    book.add_order(create_test_order("4", dec!(102.0), dec!(10.0), Side::Ask, OrderType::Limit));
 
-    assert_eq!(book.best_bid(), Some(dec!(99.0)));
-    assert_eq!(book.best_ask(), Some(dec!(101.0)));
+    let (bids, asks) = book.get_order_book(2);
+
+    assert_eq!(bids[0].0, dec!(99.0));
+    assert_eq!(asks[0].0, dec!(101.0));
 }
 
 
@@ -57,8 +66,8 @@ fn test_best_bid_ask() {
 fn test_orders_at_price() {
     let mut book = OrderBook::new();
 
-    let order1 = Order::new(1, dec!(100.0), dec!(10.0), Side::Bid, 1000);
-    let order2 = Order::new(2, dec!(100.0), dec!(20.0), Side::Bid, 1001);
+    let order1 = Order::new(1, dec!(100.0), dec!(10.0), Side::Bid, OrderType::Limit);
+    let order2 = Order::new(2, dec!(100.0), dec!(20.0), Side::Bid, OrderType::Limit);
     book.add_order(order1.clone()).unwrap();
     book.add_order(order2.clone()).unwrap();
 
