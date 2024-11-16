@@ -6,7 +6,7 @@ use crate::types::{Order, Side, OrderType, OrderStatus};
 pub struct OrderBook {
     asks:   BTreeMap<Decimal, Vec<Order>>,
     bids:   BTreeMap<Decimal, Vec<Order>>,
-    orders: HashMap<String, Order>,
+    orders: HashMap<u64, Order>,
 }
 
 impl OrderBook {
@@ -125,33 +125,6 @@ impl OrderBook {
     }
 
 
-
-    fn price_matches(&self, market_price: Decimal, order_price: Decimal, side: Side) -> bool {
-	match side {
-	    Side::Ask => order_price <= market_price,
-	    Side::Bid => order_price >= market_price,
-	}
-    }
-
-    fn match_at_price_level(&mut self, incoming_order: &mut Order, resting_orders: &mut Vec<Order>) {
-	let mut i = 0;
-	while i < resting_orders.len() && incoming_order.remaining_quantity > Decimal::ZERO {
-	    let fill_quantity = incoming_order.remaining_quantity.min(resting_orders[i].remaining_quantity);
-
-	    incoming_order.remaining_quantity -= fill_quantity;
-	    resting_orders[i].remaining_quantity -= fill_quantity;
-
-	    // Update status of resting order
-            if resting_orders[i].remaining_quantity == Decimal::ZERO {
-                let filled_order = resting_orders.remove(i);
-                self.orders.insert(filled_order.id.clone(), filled_order);
-            } else {
-                resting_orders[i].status = OrderStatus::PartiallyFilled;
-                i += 1;
-            }
-	}
-    }
-
     pub fn get_order_book(&self, depth: usize) -> (Vec<(Decimal,Decimal)>, Vec<(Decimal, Decimal)>) {
 	let bids = self.bids.iter()
 	    .rev()
@@ -167,8 +140,8 @@ impl OrderBook {
 	(bids, asks)
     }
 
-    pub fn get_order_status(&self, order_id: &str) -> Option<&Order> {
-	self.orders.get(order_id)
+    pub fn get_order_status(&self, order_id: u64) -> Option<&Order> {
+	self.orders.get(&order_id)
     }
 
     pub fn orders_at_price(&self, price: Decimal, side: Side) -> Vec<Order> {
@@ -195,14 +168,4 @@ impl OrderBook {
 	self.asks.keys().next().cloned()
     }
 
-    //
-    // helpers
-    //
-    fn get_best_opposite_price_bids(&self, _side: Side) -> Option<Decimal> {
-	self.bids.keys().next_back().cloned()
-    }
-
-    fn get_best_opposite_price_asks(&self, _side: Side) -> Option<Decimal> {
-	self.asks.keys().next().cloned()
-    }
 }

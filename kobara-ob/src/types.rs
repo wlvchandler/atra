@@ -32,7 +32,7 @@ pub enum OrderStatus {
 
 #[derive(Debug, Clone, PartialEq, Eq)] // def dont want copy
 pub struct Order {
-    pub id: String,
+    pub id: u64,
     pub price: Decimal,
     pub quantity: Decimal,
     pub remaining_quantity: Decimal,
@@ -43,7 +43,7 @@ pub struct Order {
 }
 
 impl Order {
-    pub fn new(id: String, price: Decimal, quantity: Decimal, side: Side, order_type: OrderType) -> Self {
+    pub fn new(id: u64, price: Decimal, quantity: Decimal, side: Side, order_type: OrderType) -> Self {
 	Self {
 	    id, price, quantity,
 	    remaining_quantity: quantity,
