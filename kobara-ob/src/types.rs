@@ -43,7 +43,7 @@ pub struct Order {
 }
 
 impl Order {
-    pub fn new(id: u64, price: Decimal, quantity: Decimal, side: Side, order_type: OrderType) -> Self {
+    pub fn new(id: String, price: Decimal, quantity: Decimal, side: Side, order_type: OrderType) -> Self {
 	Self {
 	    id, price, quantity,
 	    remaining_quantity: quantity,
@@ -51,5 +51,24 @@ impl Order {
 	    status: OrderStatus::Pending,
 	    timestamp: Utc::now(),
 	}
+    }
+}
+
+
+impl Ord for Order {
+    fn cmp(&self, other: &Self) -> Ordering {
+	match self.price.cmp(&other.price) {
+	    Ordering::Equal => self.timestamp.cmp(&other.timestamp),
+	    ord => match self.side {
+		Side::Bid => ord.reverse(),
+		Side::Ask => ord,
+	    },
+	}
+    }
+}
+
+impl PartialOrd for Order {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
