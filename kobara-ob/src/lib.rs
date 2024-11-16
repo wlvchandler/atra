@@ -1,5 +1,5 @@
-mod order_book;
+mod orderbook;
 mod types;
 
-pub use order_book::OrderBook;
+pub use orderbook::OrderBook;
 pub use types::{Order, Side};

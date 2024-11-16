@@ -12,9 +12,9 @@ pub struct OrderBook {
 impl OrderBook {
     pub fn new() -> Self {
 	Self {
-	    asks:   BTreemap::new(),
-	    bids:   BTreemap::new(),
-	    orders: BTreemap::new(),
+	    asks:   BTreeMap::new(),
+	    bids:   BTreeMap::new(),
+	    orders: HashMap::new(),
 	}
     }
 
@@ -56,5 +56,9 @@ impl OrderBook {
 	}
 
 	Ok(order)
+    }
+
+    pub fn get_order(&self, order_id: u64) -> Option<&Order> {
+	self.orders.get(&order_id)
     }
 }

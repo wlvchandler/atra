@@ -17,12 +17,12 @@ pub enum Side {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)] // def dont want copy
-pub enum Order {
+pub struct Order {
     pub id: u64,
     pub price: Decimal,
     pub quantity: Decimal,
     pub side: Side,
-    pub timestamp: 64,
+    pub timestamp: u64,
 }
 
 impl Order {
