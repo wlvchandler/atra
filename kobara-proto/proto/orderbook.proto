@@ -1,0 +1,64 @@
+syntax = "proto3";
+package orderbook;
+
+import "google/protobuf/timestamp.proto";
+
+service OrderBookService {
+  rpc PlaceOrder (OrderRequest) returns (OrderResponse);
+  rpc GetOrderBook (GetOrderBookRequest) returns (OrderBookResponse);
+  rpc GetOrderStatus (GetOrderStatusRequest) returns (OrderResponse);
+}
+
+message OrderRequest {
+  uint64 id = 1;
+  string price = 2;  // in a real system we'd use decimal for these
+  string quantity = 3;
+  Side side = 4;
+  OrderType order_type = 5;
+}
+
+message OrderResponse {
+  uint64 id = 1;
+  string price = 2;
+  string quantity = 3;
+  string remaining_quantity = 4;
+  Side side = 5;
+  OrderType order_type = 6;
+  OrderStatus status = 7;
+  google.protobuf.Timestamp timestamp = 8;
+}
+
+message GetOrderBookRequest {
+  uint32 depth = 1;
+}
+
+message OrderBookLevel {
+  string price = 1;
+  string quantity = 2;
+}
+
+message OrderBookResponse {
+  repeated OrderBookLevel bids = 1;
+  repeated OrderBookLevel asks = 2;
+}
+
+message GetOrderStatusRequest {
+  uint64 order_id = 1;
+}
+
+enum Side {
+  BID = 0;
+  ASK = 1;
+}
+
+enum OrderType {
+  LIMIT = 0;
+  MARKET = 1;
+}
+
+enum OrderStatus {
+  PENDING = 0;
+  PARTIALLY_FILLED = 1;
+  FILLED = 2;
+  CANCELLED = 3;
+}
