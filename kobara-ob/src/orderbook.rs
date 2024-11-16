@@ -4,8 +4,8 @@ use crate::types::{Order, Side};
 
 #[derive(Debug, Default)]
 pub struct OrderBook {
-    asks: BTreeMap<Decimal, Vec<Order>>,
-    bids: BTreeMap<Decimal, Vec<Order>>,
+    asks:   BTreeMap<Decimal, Vec<Order>>,
+    bids:   BTreeMap<Decimal, Vec<Order>>,
     orders: HashMap<u64, Order>,
 }
 
@@ -60,5 +60,22 @@ impl OrderBook {
 
     pub fn get_order(&self, order_id: u64) -> Option<&Order> {
 	self.orders.get(&order_id)
+    }
+
+    pub fn orders_at_price(&self, price: Decimal, side: Side) -> Vec<Order> {
+	match side {
+	    Side::Ask => self.asks.get(&price),
+	    Side::Bid => self.bids.get(&price),
+	}
+	.map(|orders| orders.clone())
+	.unwrap_or_default()
+    }
+
+    pub fn best_bid(&self) -> Option<Decimal> {
+	self.bids.keys().next_back().cloned()
+    }
+
+    pub fn best_ask(&self) -> Option<Decimal> {
+	self.asks.keys().next().cloned()
     }
 }
