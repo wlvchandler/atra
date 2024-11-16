@@ -1,0 +1,64 @@
+syntax = "proto3"
+package orderbook;
+
+service OrderBookService {
+    rpc PlaceOrder (Order) returns (OrderResponse);
+    rpc GetOrderBook (OrderBookRequest) returns (OrderBookResponse);
+    rpc GetOrderStatus (OrderStatusRequest) returns (OrderStatusResponse);
+}
+
+message Order {
+    string id = 1;
+    string price = 2;
+    string quantity = 3;
+    Side side = 4;
+    OrderType type = 5;
+}
+
+enum Side {
+    BID = 0;
+    ASK = 1;
+}
+
+enum OrderType {
+    LIMIT = 0;
+    MARKET = 1;
+}
+
+message OrderResponse {
+    string order_id = 1;
+    OrderStatus status = 2;
+}
+
+message OrderBookRequest {
+    int32 depth = 1;
+}
+
+message OrderBookResponse {
+  repeated PriceLevel bids = 1;
+  repeated PriceLevel asks = 2;
+}
+
+message PriceLevel {
+  string price = 1;
+  string quantity = 2;
+  int32 order_count = 3;
+}
+
+message OrderStatusRequest {
+  string order_id = 1;
+}
+
+message OrderStatusResponse {
+  string order_id = 1;
+  OrderStatus status = 2;
+  string filled_quantity = 3;
+  string remaining_quantity = 4;
+}
+
+enum OrderStatus {
+  PENDING = 0;
+  PARTIALLY_FILLED = 1;
+  FILLED = 2;
+  CANCELLED = 3;
+}
