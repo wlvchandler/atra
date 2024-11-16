@@ -1,0 +1,15 @@
+[package]
+name = "orderbook_core"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "orderbook_core"
+path = "src/lib.rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+rustler = "0.29.1"
+rust_decimal = "1.32"
+rust_decimal_macros = "1.32"
+chrono = "0.4"

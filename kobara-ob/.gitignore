@@ -1,2 +1,37 @@
-target/
+# Rust artifacts
+/target/
+**/*.rs.bk
+Cargo.lock
+
+# Elixir artifacts
+/_build/
+/deps/
+*.ez
+/priv/native/
+/priv/static/
+erl_crash.dump
+*.beam
+/.elixir_ls
+.fetch
+
+# Generated protobuf files
+/lib/proto/
+
+# Editor/IDE specific
+.vscode/
+.idea/
+*.iml
+*.swp
 *~
+
+# Mac specific
+.DS_Store
+
+# Mix artifacts
+mix.lock
+
+# Rust NIF crate lock file
+/native/orderbook_core/Cargo.lock
+
+# Generated documentation
+/doc/

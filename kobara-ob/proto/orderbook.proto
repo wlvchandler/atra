@@ -1,37 +1,29 @@
-syntax = "proto3"
+syntax = "proto3";
+
 package orderbook;
+option go_package = "orderbook";
 
 service OrderBookService {
-    rpc PlaceOrder (Order) returns (OrderResponse);
-    rpc GetOrderBook (OrderBookRequest) returns (OrderBookResponse);
-    rpc GetOrderStatus (OrderStatusRequest) returns (OrderStatusResponse);
+  rpc PlaceOrder (Order) returns (OrderResponse);
+  rpc GetOrderBook (OrderBookRequest) returns (OrderBookResponse);
+  rpc GetOrderStatus (OrderStatusRequest) returns (OrderStatusResponse);
 }
 
 message Order {
-    string id = 1;
-    string price = 2;
-    string quantity = 3;
-    Side side = 4;
-    OrderType type = 5;
-}
-
-enum Side {
-    BID = 0;
-    ASK = 1;
-}
-
-enum OrderType {
-    LIMIT = 0;
-    MARKET = 1;
+  uint64 id = 1;
+  string price = 2;
+  string quantity = 3;
+  string side = 4;
+  string order_type = 5;
 }
 
 message OrderResponse {
-    string order_id = 1;
-    OrderStatus status = 2;
+  uint64 id = 1;
+  string status = 2;
 }
 
 message OrderBookRequest {
-    int32 depth = 1;
+  uint32 depth = 1;
 }
 
 message OrderBookResponse {
@@ -42,23 +34,15 @@ message OrderBookResponse {
 message PriceLevel {
   string price = 1;
   string quantity = 2;
-  int32 order_count = 3;
 }
 
 message OrderStatusRequest {
-  string order_id = 1;
+  uint64 order_id = 1;
 }
 
 message OrderStatusResponse {
-  string order_id = 1;
-  OrderStatus status = 2;
+  uint64 id = 1;
+  string status = 2;
   string filled_quantity = 3;
   string remaining_quantity = 4;
-}
-
-enum OrderStatus {
-  PENDING = 0;
-  PARTIALLY_FILLED = 1;
-  FILLED = 2;
-  CANCELLED = 3;
 }
