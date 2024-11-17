@@ -33,7 +33,7 @@ impl OrderBook {
 
 	    let orders = price_map.entry(order.price).or_insert_with(Vec::new);
 	    orders.push(matched_order.clone());
-	    orders.sort_unstable(); // maintain time priority
+	    orders.sort_unstable(); // this should maintain time priority - need to verify
 	}
 
 	self.orders.insert(matched_order.id.clone(), matched_order.clone());
