@@ -1,0 +1,15 @@
+target/
+venv/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+.coverage
+htmlcov/
+.tox/
+.cargo/
+Cargo.lock

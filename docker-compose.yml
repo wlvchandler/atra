@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  orderbook:
+    build:
+      context: .
+      dockerfile: kobara-ob/Dockerfile
+    ports:
+      - "50051:50051"
+    environment:
+      - BIND_ADDRESS=0.0.0.0:50051
+    networks:
+      - kobara-net
+    healthcheck:
+      test: ["CMD", "nc", "-zv", "localhost", "50051"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+networks:
+  kobara-net:
+    driver: bridge

@@ -1,0 +1,11 @@
+#!/bin/bash
+
+CLI_IMAGE="kobara-cli"
+NETWORK="kote_kobara-net"
+
+if [[ "$(docker images -q $CLI_IMAGE 2> /dev/null)" == "" ]]; then
+    echo "Building CLI image..."
+    docker build -t $CLI_IMAGE -f kobara-cli/Dockerfile .
+fi
+
+docker run --rm --network $NETWORK -e kobara_OB_HOST=orderbook -e kobara_OB_PORT=50051 $CLI_IMAGE "$@"

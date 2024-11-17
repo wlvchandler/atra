@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import grpc
+import os
 from decimal import Decimal
 from generated.orderbook_pb2 import (
     OrderRequest, GetOrderBookRequest, GetOrderStatusRequest,
@@ -9,7 +10,9 @@ from generated.orderbook_pb2 import (
 from generated.orderbook_pb2_grpc import OrderBookServiceStub
 
 def connect():
-    channel = grpc.insecure_channel('localhost:50051')
+    host = os.getenv('kobara_OB_HOST', '127.0.0.1')  # localhost if not in container
+    port = os.getenv('kobara_OB_PORT', '50051')
+    channel = grpc.insecure_channel(f'{host}:{port}')
     return OrderBookServiceStub(channel)
 
 def place_order(stub, args):
