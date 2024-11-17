@@ -19,6 +19,13 @@ futures = "0.3"
 
 [dev-dependencies]
 assert_matches = "1.5"
+criterion = "0.5"
+rand = "0.8"
+rust_decimal = { version = "1.32", features = ["rand"] }
 
 [build-dependencies]
 tonic-build = "0.10"
+
+[[bench]]
+name = "matching_engine_benchmark"
+harness = false
