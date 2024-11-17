@@ -43,102 +43,120 @@ impl MatchingEngine {
         order
     }
 
+    /// --------
     /// core matcher against the book
-    fn match_order(&mut self, order: &Order) -> Order {
-        let mut matched_order = order.clone();
-	let mut trades_to_record = VecDeque::with_capacity(8); // this can be tuned
+    /// --------
 
-        while matched_order.remaining_quantity > Decimal::ZERO {
-            // so we get the best price from the opposite side...
-            let best_price = match order.side {
-                Side::Bid => self.order_book.asks.keys().next().cloned(),
-                Side::Ask => self.order_book.bids.keys().next_back().cloned(),
-            };
+    fn get_best_matching_price(&self, side: Side) -> Option<Decimal> {
+        match side {
+            Side::Bid => self.order_book.asks.keys().next().cloned(),
+            Side::Ask => self.order_book.bids.keys().next_back().cloned(),
+        }
+    }
 
-	    if best_price.is_none() {
-		break;
-	    }
+    fn should_match(&self, order: &Order, price: Decimal) -> bool {
+        match order.order_type {
+            OrderType::Market => true,
+            OrderType::Limit => match order.side {
+                Side::Ask => price >= order.price,
+                Side::Bid => price <= order.price,
+            },
+        }
+    }
 
-	    let price = best_price.unwrap();
+    fn match_at_price_level(matched_order: &mut Order, price: Decimal, resting_orders: &mut VecDeque<Order>) -> VecDeque<Trade> {
+        let mut trades = VecDeque::new();
 
-            // then check if we should match at this price level.
-            let should_match = match order.order_type {
-                OrderType::Market => true,
-                OrderType::Limit => match order.side {
-                    Side::Ask => price >= order.price,
-                    Side::Bid => price <= order.price,
-                },
-            };
+	// actually fill @ price level
+        while let Some(resting_order) = resting_orders.front_mut() {
+            if matched_order.remaining_quantity == Decimal::ZERO {
+                break;
+            }
 
-	    if !should_match {
-		break;
-	    }
+            let fill_quantity = matched_order.remaining_quantity.min(resting_order.remaining_quantity);
 
-            // (get mutable access to the opposite side's orders)
-            let orders = match order.side {
-                Side::Bid => self.order_book.asks.get_mut(&price),
-                Side::Ask => self.order_book.bids.get_mut(&price),
-            };
+	    // ...create trades but delay recording them in book...
+            trades.push_back(Trade::new(
+                resting_order.id,
+                matched_order.id,
+                price,
+                fill_quantity,
+                matched_order.side,
+            ));
 
-            if let Some(resting_orders) = orders {
-                // now, we actually fill @ this price level...
-		while let Some(resting_order) = resting_orders.front_mut() {
-		    if matched_order.remaining_quantity == Decimal::ZERO {
-			break;
-		    }
+	    // ... reflect the qty changes...
+            matched_order.remaining_quantity -= fill_quantity;
+            resting_order.remaining_quantity -= fill_quantity;
 
-                    let fill_quantity = matched_order.remaining_quantity.min(resting_order.remaining_quantity);
-
-		    // ...create trade but delay record...
-		    trades_to_record.push_back(Trade::new(
-			resting_order.id,
-			matched_order.id,
-			price,
-			fill_quantity,
-			order.side,
-		    ));
-
-                    // ...reflect the qty changes...
-                    matched_order.remaining_quantity -= fill_quantity;
-                    resting_order.remaining_quantity -= fill_quantity;
-
-                    // ...update status of resting order...
-                    if resting_order.remaining_quantity == Decimal::ZERO {
-			resting_orders.pop_front();
-                    } else {
-                        resting_order.status = OrderStatus::PartiallyFilled;
-                    }
-                }
-
-                // ...and remove the price level if it's empty.
-                if resting_orders.is_empty() {
-                    match order.side {
-                        Side::Bid => { self.order_book.asks.remove(&price); },
-                        Side::Ask => { self.order_book.bids.remove(&price); },
-                    };
-                }
+	    // ...update status of resting order...
+            if resting_order.remaining_quantity == Decimal::ZERO {
+                resting_orders.pop_front();
+            } else {
+                resting_order.status = OrderStatus::PartiallyFilled;
             }
         }
 
-
-	// now batch record all trades from this order
-	for trade in trades_to_record {
-	    self.trade_history.add_trade(trade);
-	}
-
-	// lastly - update order status
-	matched_order.status = if matched_order.remaining_quantity == Decimal::ZERO {
-            OrderStatus::Filled
-	} else if matched_order.remaining_quantity < matched_order.quantity {
-            OrderStatus::PartiallyFilled
-	} else {
-            OrderStatus::Pending
-	};
-
-	matched_order
+        trades
     }
 
+    fn update_order_status(order: &Order) -> OrderStatus {
+        if order.remaining_quantity == Decimal::ZERO {
+            OrderStatus::Filled
+        } else if order.remaining_quantity < order.quantity {
+            OrderStatus::PartiallyFilled
+        } else {
+            OrderStatus::Pending
+        }
+    }
+
+    fn match_order(&mut self, order: &Order) -> Order {
+        let mut matched_order = order.clone();
+        let mut trades_to_record = VecDeque::new();
+
+        while matched_order.remaining_quantity > Decimal::ZERO {
+            let best_price = self.get_best_matching_price(order.side);
+
+            if let Some(price) = best_price {
+                if !self.should_match(&matched_order, price) {
+                    break;
+                }
+
+                let orders = match order.side {
+                    Side::Bid => self.order_book.asks.get_mut(&price),
+                    Side::Ask => self.order_book.bids.get_mut(&price),
+                };
+
+                if let Some(resting_orders) = orders {
+		    // actually fill orders @ price level
+                    let mut level_trades = Self::match_at_price_level(&mut matched_order, price, resting_orders);
+                    trades_to_record.append(&mut level_trades);
+
+		    // ...and remove the price level if it's empty
+                    if resting_orders.is_empty() {
+                        match order.side {
+                            Side::Bid => { self.order_book.asks.remove(&price); },
+                            Side::Ask => { self.order_book.bids.remove(&price); },
+                        };
+                    }
+                }
+            } else {
+                break;
+            }
+        }
+
+        // batch record all trades from order
+	// BTW this would be a good use case for something like kafka or redis i think
+        for trade in trades_to_record {
+            self.trade_history.add_trade(trade);
+        }
+
+        matched_order.status = Self::update_order_status(&matched_order);
+        matched_order
+    }
+
+    ///
     /// ------------------ Getter/passthru funcs
+    ///
 
     /// current state of the order book
     pub fn get_order_book(&self, depth: usize) -> (Vec<(Decimal, Decimal)>, Vec<(Decimal, Decimal)>) {
