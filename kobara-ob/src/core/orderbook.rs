@@ -1,11 +1,11 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use rust_decimal::Decimal;
 use super::types::{Order, Side};
 
 #[derive(Debug, Default)]
 pub struct OrderBook {
-    pub(crate) asks: BTreeMap<Decimal, Vec<Order>>,
-    pub(crate) bids: BTreeMap<Decimal, Vec<Order>>,
+    pub(crate) asks: BTreeMap<Decimal, VecDeque<Order>>,
+    pub(crate) bids: BTreeMap<Decimal, VecDeque<Order>>,
     pub(crate) orders: HashMap<u64, Order>,
 }
 
@@ -15,16 +15,18 @@ impl OrderBook {
     }
 
     /// -------------
-    pub fn insert_order(&mut self, order: Order) {
+    pub fn place_order(&mut self, order: Order) -> Order {
+	let order_clone = order.clone();
         let price_map = match order.side {
             Side::Ask => &mut self.asks,
             Side::Bid => &mut self.bids,
         };
 
-        let orders = price_map.entry(order.price).or_insert_with(Vec::new);
-        orders.push(order.clone());
-        orders.sort_unstable(); // this should maintain time priority - need to verify
+        let orders = price_map.entry(order.price).or_insert_with(VecDeque::new);
+        orders.push_back(order.clone());
+        //orders.sort_unstable(); // this should maintain time priority - need to verify
         self.orders.insert(order.id, order);
+	order_clone
     }
 
     /// -------------
@@ -69,7 +71,7 @@ impl OrderBook {
     }
 
     /// get all orders at a specific price & side
-    pub fn orders_at_price(&self, price: Decimal, side: Side) -> Vec<Order> {
+    pub fn orders_at_price(&self, price: Decimal, side: Side) -> VecDeque<Order> {
         match side {
             Side::Ask => self.asks.get(&price),
             Side::Bid => self.bids.get(&price),

@@ -4,9 +4,10 @@ package orderbook;
 import "google/protobuf/timestamp.proto";
 
 service OrderBookService {
-  rpc PlaceOrder (OrderRequest) returns (OrderResponse);
-  rpc GetOrderBook (GetOrderBookRequest) returns (OrderBookResponse);
-  rpc GetOrderStatus (GetOrderStatusRequest) returns (OrderResponse);
+    rpc PlaceOrder      (OrderRequest)           returns (OrderResponse);
+    rpc GetOrderBook    (GetOrderBookRequest)    returns (OrderBookResponse);
+    rpc GetOrderStatus  (GetOrderStatusRequest)  returns (OrderResponse);
+    rpc GetTradeHistory (GetTradeHistoryRequest) returns (TradeHistoryResponse);
 }
 
 message OrderRequest {
@@ -45,6 +46,25 @@ message OrderBookResponse {
 message GetOrderStatusRequest {
   uint64 order_id = 1;
 }
+
+
+message GetTradeHistoryRequest {
+    uint32 limit = 1;  // how many recent trades to return
+}
+
+message Trade {
+    uint64 maker_order_id = 1;
+    uint64 taker_order_id = 2;
+    string price = 3;
+    string quantity = 4;
+    Side side = 5;
+    google.protobuf.Timestamp timestamp = 6;
+}
+
+message TradeHistoryResponse {
+    repeated Trade trades = 1;
+}
+
 
 enum Side {
   BID = 0;

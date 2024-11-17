@@ -9,6 +9,7 @@ use crate::proto;
 use crate::proto::order_book_service_server::{OrderBookService as GrpcService, OrderBookServiceServer};
 use crate::proto::{OrderRequest, OrderResponse, GetOrderBookRequest, OrderBookResponse, GetOrderStatusRequest};
 use crate::core::{Order, OrderType, Side};
+use crate::proto::{GetTradeHistoryRequest, TradeHistoryResponse, Trade as ProtoTrade};
 
 pub struct OrderBookService {
     engine: Arc<Mutex<MatchingEngine>>,
@@ -123,5 +124,30 @@ impl GrpcService for OrderBookService {
                 nanos: order.timestamp.timestamp_subsec_nanos() as i32,
             }),
         }))
+    }
+
+
+    async fn get_trade_history(&self, request: Request<GetTradeHistoryRequest>) -> Result<Response<TradeHistoryResponse>, Status> {
+	let limit = request.into_inner().limit as usize;
+
+	let trades = self.engine
+	    .lock()
+	    .map_err(|_| Status::internal("lock error"))?
+	    .get_trade_history(Some(limit))
+	    .into_iter()
+	    .map(|trade| ProtoTrade{
+		maker_order_id: trade.maker_order_id,
+                taker_order_id: trade.taker_order_id,
+                price: trade.price.to_string(),
+                quantity: trade.quantity.to_string(),
+                side: trade.side as i32,
+                timestamp: Some(Timestamp {
+                    seconds: trade.timestamp.timestamp(),
+                    nanos: trade.timestamp.timestamp_subsec_nanos() as i32,
+                }),
+	    })
+	    .collect();
+
+	Ok(Response::new(TradeHistoryResponse { trades }))
     }
 }

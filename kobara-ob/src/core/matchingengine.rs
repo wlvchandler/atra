@@ -1,15 +1,19 @@
 use rust_decimal::Decimal;
 use super::orderbook::OrderBook;
 use super::types::{Order, Side, OrderType, OrderStatus};
+use super::trade_history::{TxnHistory, Trade};
+use std::collections::VecDeque;
 
 pub struct MatchingEngine {
     order_book: OrderBook,
+    trade_history: TxnHistory,
 }
 
 impl MatchingEngine {
     pub fn new() -> Self {
         Self {
             order_book: OrderBook::new(),
+	    trade_history: TxnHistory::new()
         }
     }
 
@@ -25,7 +29,7 @@ impl MatchingEngine {
     fn place_limit_order(&mut self, order: Order) -> Order {
         let matched_order = self.match_order(&order);
         if matched_order.remaining_quantity > Decimal::ZERO {
-            self.order_book.insert_order(matched_order.clone());
+            self.order_book.place_order(matched_order.clone());
         } else {
             self.order_book.orders.insert(matched_order.id, matched_order.clone());
         }
@@ -42,6 +46,10 @@ impl MatchingEngine {
     /// core matcher against the book
     fn match_order(&mut self, order: &Order) -> Order {
         let mut matched_order = order.clone();
+	let mut trades_to_record = VecDeque::with_capacity(8); // this can be tuned
+
+	println!("Bids: {:?}", self.order_book.bids);
+	println!("Asks: {:?}", self.order_book.asks);
 
         while matched_order.remaining_quantity > Decimal::ZERO {
             // so we get the best price from the opposite side...
@@ -50,71 +58,87 @@ impl MatchingEngine {
                 Side::Ask => self.order_book.bids.keys().next_back().cloned(),
             };
 
+	    if best_price.is_none() {
+		break;
+	    }
+
+	    let price = best_price.unwrap();
+
             // then check if we should match at this price level.
-            match best_price {
-                Some(price) => {
-                    let should_match = match order.order_type {
-                        OrderType::Market => true,
-                        OrderType::Limit => match order.side {
-                            Side::Ask => order.price <= price,
-                            Side::Bid => order.price >= price,
-                        },
-                    };
+            let should_match = match order.order_type {
+                OrderType::Market => true,
+                OrderType::Limit => match order.side {
+                    Side::Ask => price >= order.price,
+                    Side::Bid => price <= order.price,
+                },
+            };
 
-                    if should_match {
-                        // (get mutable access to the opposite side's orders)
-                        let orders = match order.side {
-                            Side::Bid => self.order_book.asks.get_mut(&price),
-                            Side::Ask => self.order_book.bids.get_mut(&price),
-                        };
+	    if !should_match {
+		break;
+	    }
 
-                        if let Some(resting_orders) = orders {
-                            // now, we actually fill @ this price level...
-                            let mut i = 0;
-                            while i < resting_orders.len() && matched_order.remaining_quantity > Decimal::ZERO {
-                                let fill_quantity = matched_order.remaining_quantity
-                                    .min(resting_orders[i].remaining_quantity);
+            // (get mutable access to the opposite side's orders)
+            let orders = match order.side {
+                Side::Bid => self.order_book.asks.get_mut(&price),
+                Side::Ask => self.order_book.bids.get_mut(&price),
+            };
 
-                                // ...reflect those qty changes...
-                                matched_order.remaining_quantity -= fill_quantity;
-                                resting_orders[i].remaining_quantity -= fill_quantity;
+            if let Some(resting_orders) = orders {
+                // now, we actually fill @ this price level...
+		while let Some(resting_order) = resting_orders.front_mut() {
+		    if matched_order.remaining_quantity == Decimal::ZERO {
+			break;
+		    }
 
-                                // ...update status of resting order...
-                                if resting_orders[i].remaining_quantity == Decimal::ZERO {
-                                    let filled_order = resting_orders.remove(i);
-                                    self.order_book.orders.insert(filled_order.id, filled_order);
-                                } else {
-                                    resting_orders[i].status = OrderStatus::PartiallyFilled;
-                                    i += 1;
-                                }
-                            }
+                    let fill_quantity = matched_order.remaining_quantity.min(resting_order.remaining_quantity);
 
-                            // ...and remove the price level if it's empty.
-                            if resting_orders.is_empty() {
-                                match order.side {
-                                    Side::Bid => { self.order_book.asks.remove(&price); },
-                                    Side::Ask => { self.order_book.bids.remove(&price); },
-                                };
-                            }
-                        }
+		    // ...create trade but delay record...
+		    trades_to_record.push_front(Trade::new(
+			resting_order.id,
+			matched_order.id,
+			price,
+			fill_quantity,
+			order.side,
+		    ));
+
+                    // ...reflect the qty changes...
+                    matched_order.remaining_quantity -= fill_quantity;
+                    resting_order.remaining_quantity -= fill_quantity;
+
+                    // ...update status of resting order...
+                    if resting_order.remaining_quantity == Decimal::ZERO {
+			resting_orders.pop_front();
                     } else {
-                        break;
+                        resting_order.status = OrderStatus::PartiallyFilled;
                     }
                 }
-                None => break,
+
+                // ...and remove the price level if it's empty.
+                if resting_orders.is_empty() {
+                    match order.side {
+                        Side::Bid => { self.order_book.asks.remove(&price); },
+                        Side::Ask => { self.order_book.bids.remove(&price); },
+                    };
+                }
             }
         }
 
-        // lastly - update order status
-        matched_order.status = if matched_order.remaining_quantity == Decimal::ZERO {
-            OrderStatus::Filled
-        } else if matched_order.remaining_quantity < matched_order.quantity {
-            OrderStatus::PartiallyFilled
-        } else {
-            OrderStatus::Pending
-        };
 
-        matched_order
+	// now batch record all trades from this order
+	for trade in trades_to_record {
+	    self.trade_history.add_trade(trade);
+	}
+
+	// lastly - update order status
+	matched_order.status = if matched_order.remaining_quantity == Decimal::ZERO {
+            OrderStatus::Filled
+	} else if matched_order.remaining_quantity < matched_order.quantity {
+            OrderStatus::PartiallyFilled
+	} else {
+            OrderStatus::Pending
+	};
+
+	matched_order
     }
 
     /// ------------------ Getter/passthru funcs
@@ -130,7 +154,7 @@ impl MatchingEngine {
     }
 
     /// all orders at a specific price and side
-    pub fn orders_at_price(&self, price: Decimal, side: Side) -> Vec<Order> {
+    pub fn orders_at_price(&self, price: Decimal, side: Side) -> VecDeque<Order> {
         self.order_book.orders_at_price(price, side)
     }
 
@@ -143,4 +167,13 @@ impl MatchingEngine {
     pub fn best_ask(&self) -> Option<Decimal> {
         self.order_book.best_ask()
     }
+
+    /// -------------------
+    pub fn get_trade_history(&self, limit: Option<usize>) -> Vec<Trade> {
+	match limit {
+	    Some(n) => self.trade_history.get_recent_trades(n),
+	    None => self.trade_history.get_trades()
+	}
+    }
+
 }
