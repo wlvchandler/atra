@@ -21,3 +21,5 @@ kobara-cli/kobara_cli/generated/
 # OS
 .DS_Store
 Thumbs.db
+
+*.log

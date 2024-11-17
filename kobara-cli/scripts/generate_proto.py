@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import subprocess
 import shutil
+import sys
 from pathlib import Path
 
 def main():
@@ -13,7 +14,8 @@ def main():
     generated_dir.mkdir()
 
     subprocess.run([
-        "python", "-m", "grpc_tools.protoc",
+        sys.executable,
+        "-m", "grpc_tools.protoc",
         f"-I{proto_file.parent}",
         f"--python_out={generated_dir}",
         f"--grpc_python_out={generated_dir}",
