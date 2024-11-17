@@ -1,0 +1,79 @@
+name: CI/CD
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # MENG/CLOB
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: kobara-ob
+
+      - name: Install Protobuf Compiler
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+
+      - name: Build Rust
+        run: cd kobara-ob && cargo build --verbose
+
+      - name: Run Rust tests
+        run: cd kobara-ob && cargo test --verbose
+
+      # CLI
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install Python dependencies
+        run: |
+          cd kobara-cli
+          pip install -r requirements.txt
+
+      - name: Run Python tests
+        run: |
+          cd kobara-cli
+          python -m pytest tests/ -v
+
+  build-docker:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Orderbook image
+        run: docker build -t orderbook -f kobara-ob/Dockerfile .
+
+      - name: Build CLI image
+        run: docker build -t cli -f kobara-cli/Dockerfile .
+
+  integration:
+    needs: build-docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build images
+        run: |
+          docker build -t orderbook -f kobara-ob/Dockerfile .
+          docker build -t cli -f kobara-cli/Dockerfile .
+
+      - name: Run integration tests
+        run: |
+          docker compose up -d orderbook
+          sleep 5  # Give the server time to start
+          docker run --network $(docker network ls -q -f name=kobara) cli book 10
