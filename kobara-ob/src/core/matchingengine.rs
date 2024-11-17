@@ -48,9 +48,6 @@ impl MatchingEngine {
         let mut matched_order = order.clone();
 	let mut trades_to_record = VecDeque::with_capacity(8); // this can be tuned
 
-	println!("Bids: {:?}", self.order_book.bids);
-	println!("Asks: {:?}", self.order_book.asks);
-
         while matched_order.remaining_quantity > Decimal::ZERO {
             // so we get the best price from the opposite side...
             let best_price = match order.side {
@@ -93,7 +90,7 @@ impl MatchingEngine {
                     let fill_quantity = matched_order.remaining_quantity.min(resting_order.remaining_quantity);
 
 		    // ...create trade but delay record...
-		    trades_to_record.push_front(Trade::new(
+		    trades_to_record.push_back(Trade::new(
 			resting_order.id,
 			matched_order.id,
 			price,
