@@ -27,13 +27,23 @@ def get_book(stub, args):
     request = GetOrderBookRequest(depth=args.depth)
     response = stub.GetOrderBook(request)
 
-    print("\nBids:")
-    for level in response.bids:
-        print(f"  {level.price}: {level.quantity}")
+    print("\nkobaraOB (Max depth {}):".format(args.depth))
+    print(f"{'Price':>10} {'Quantity':>10} {'Side':>6}")
+    print("-" * 30)
 
-    print("\nAsks:")
-    for level in response.asks:
-        print(f"  {level.price}: {level.quantity}")
+    # bids
+    for level in sorted(response.bids, key=lambda x: Decimal(x.price), reverse=True):
+        price = Decimal(level.price).quantize(Decimal('0.01'))
+        quantity = Decimal(level.quantity).quantize(Decimal('0.01'))
+        print(f"{price:>10} {quantity:>10} {'BID':>6}")
+
+    print("-" * 30)
+
+    # asks
+    for level in sorted(response.asks, key=lambda x: Decimal(x.price)):
+        price = Decimal(level.price).quantize(Decimal('0.01'))
+        quantity = Decimal(level.quantity).quantize(Decimal('0.01'))
+        print(f"{price:>10} {quantity:>10} {'ASK':>6}")
 
 def main():
     parser = argparse.ArgumentParser(description='OrderBook CLI')

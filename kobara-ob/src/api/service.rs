@@ -4,20 +4,20 @@ use rust_decimal::Decimal;
 use std::str::FromStr;
 use prost_types::Timestamp;
 
-use crate::core::OrderBook;
+use crate::core::MatchingEngine; // Updated import
 use crate::proto;
 use crate::proto::order_book_service_server::{OrderBookService as GrpcService, OrderBookServiceServer};
 use crate::proto::{OrderRequest, OrderResponse, GetOrderBookRequest, OrderBookResponse, GetOrderStatusRequest};
 use crate::core::{Order, OrderType, Side};
 
 pub struct OrderBookService {
-    book: Arc<Mutex<OrderBook>>,
+    engine: Arc<Mutex<MatchingEngine>>,
 }
 
 impl OrderBookService {
-    pub fn new(book: OrderBook) -> Self {
+    pub fn new(engine: MatchingEngine) -> Self {
         Self {
-            book: Arc::new(Mutex::new(book))
+            engine: Arc::new(Mutex::new(engine))
         }
     }
 
@@ -51,7 +51,7 @@ impl GrpcService for OrderBookService {
             if req.order_type == 0 { OrderType::Limit } else { OrderType::Market },
         );
 
-        let result = self.book
+        let result = self.engine
             .lock()
             .map_err(|_| Status::internal("Lock error"))?
             .place_order(order);
@@ -76,7 +76,7 @@ impl GrpcService for OrderBookService {
         request: Request<GetOrderBookRequest>,
     ) -> Result<Response<OrderBookResponse>, Status> {
         let depth = request.into_inner().depth as usize;
-        let (bids, asks) = self.book
+        let (bids, asks) = self.engine
             .lock()
             .map_err(|_| Status::internal("Lock error"))?
             .get_order_book(depth);
@@ -103,7 +103,7 @@ impl GrpcService for OrderBookService {
     ) -> Result<Response<OrderResponse>, Status> {
         let order_id = request.into_inner().order_id;
 
-        let order = self.book
+        let order = self.engine
             .lock()
             .map_err(|_| Status::internal("Lock error"))?
             .get_order_status(order_id)
