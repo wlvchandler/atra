@@ -781,6 +781,8 @@ dependencies = [
  "rand",
  "rust_decimal",
  "rust_decimal_macros",
+ "serde",
+ "serde_json",
  "tokio",
  "tonic",
  "tonic-build",

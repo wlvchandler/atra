@@ -1,0 +1,51 @@
+single_order/place_matching_order
+                        time:   [68.161 ns 71.868 ns 74.349 ns]
+                        change: [-8.1745% -4.5871% -1.1092%] (p = 0.04 < 0.05)
+                        Performance has improved.
+	Found 1 outliers among 10 measurements (10.00%)
+	  1 (10.00%) high mild
+
+orderbook_depth/matching_order/100
+                        time:   [66.318 ns 68.171 ns 70.178 ns]
+                        change: [-5.9358% -3.2520% -0.6296%] (p = 0.04 < 0.05)
+                        Change within noise threshold.
+	Found 2 outliers among 10 measurements (20.00%)
+	  2 (20.00%) high mild
+
+
+orderbook_depth/matching_order/1000
+                        time:   [66.502 ns 67.556 ns 68.413 ns]
+                        change: [-5.6218% -3.9198% -2.4117%] (p = 0.00 < 0.05)
+                        Performance has improved.
+
+orderbook_depth/matching_order/10000
+                        time:   [67.225 ns 68.807 ns 70.057 ns]
+                        change: [-6.9809% -2.8630% +0.8304%] (p = 0.20 > 0.05)
+                        No change in performance detected.
+
+continuous_matching/order_batch/100
+                        time:   [29.460 µs 29.760 µs 30.080 µs]
+                        change: [-0.6605% +0.1926% +1.0056%] (p = 0.68 > 0.05)
+                        No change in performance detected.
+	Found 1 outliers among 10 measurements (10.00%)
+	  1 (10.00%) high mild
+
+
+continuous_matching/order_batch/1000
+                        time:   [302.86 µs 304.38 µs 306.72 µs]
+                        change: [+0.0657% +0.8523% +1.6939%] (p = 0.07 > 0.05)
+                        No change in performance detected.
+
+
+latency_distribution/measure_latencies
+                        time:   [9.0873 µs 9.1244 µs 9.1786 µs]
+                        change: [-97.676% -97.654% -97.631%] (p = 0.00 < 0.05)
+                        Performance has improved.
+	Found 2 outliers among 10 measurements (20.00%)
+	   2 (20.00%) high mild
+
+
+Final Latency Distribution Summary:
+p50: 220ns
+p95: 381ns
+p99: 470ns
