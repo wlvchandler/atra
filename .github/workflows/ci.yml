@@ -58,17 +58,55 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build images in parallel
+
+      # Set up Python and generate protobuf files
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install Protobuf Compiler
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+
+      - name: Install Python dependencies and generate protos
         run: |
-          docker build -t orderbook -f kobara-ob/Dockerfile . &
-          docker build -t cli -f kobara-cli/Dockerfile . &
-          wait
-      - name: Start services
+          cd kobara-cli
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+          # Generate protobuf files
+          mkdir -p generated
+          python -m grpc_tools.protoc \
+            -I../kobara-proto/proto \
+            --python_out=./generated \
+            --grpc_python_out=./generated \
+            ../kobara-proto/proto/orderbook.proto
+          sed -i 's/import orderbook_pb2/import generated.orderbook_pb2/' generated/orderbook_pb2_grpc.py
+          touch generated/__init__.py
+
+          # Set PYTHONPATH
+          echo "PYTHONPATH=$PWD" >> $GITHUB_ENV
+
+      # Start orderbook service
+      - name: Build and start orderbook
         run: |
-          docker compose down --volumes --remove-orphans || true
+          docker build -t orderbook -f kobara-ob/Dockerfile .
           docker compose up -d orderbook
           timeout 30s bash -c 'until docker compose ps | grep -q "healthy"; do sleep 1; done'
-          docker run --network kobara --rm  -e kobara_OB_HOST=orderbook cli book 10
+
+      # Run CLI tests
+      - name: Run integration tests
+        env:
+          kobara_OB_HOST: localhost
+        run: |
+          cd kobara-cli
+          chmod +x invm
+          ./invm buy 10@100 sell 10@101
+          ./invm book 10
+
       - name: Show logs on failure
         if: failure()
-        run: docker compose logs orderbook
+        run: |
+          docker compose ps
+          docker compose logs orderbook

@@ -25,4 +25,4 @@ ENV PYTHONPATH=/usr/src/app/kobara-cli
 
 RUN touch generated/__init__.py
 
-ENTRYPOINT ["python", "./cli.py"]
+ENTRYPOINT ["./invm"]
