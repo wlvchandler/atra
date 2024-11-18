@@ -3,9 +3,10 @@ import argparse
 import grpc
 import os
 from decimal import Decimal
+from datetime import datetime
 from generated.orderbook_pb2 import (
     OrderRequest, GetOrderBookRequest, GetOrderStatusRequest,
-    Side, OrderType
+    GetTradeHistoryRequest, Side, OrderType
 )
 from generated.orderbook_pb2_grpc import OrderBookServiceStub
 
@@ -48,6 +49,27 @@ def get_book(stub, args):
         quantity = Decimal(level.quantity).quantize(Decimal('0.01'))
         print(f"{price:>10} {quantity:>10} {'ASK':>6}")
 
+def get_trades(stub, args):
+    request = GetTradeHistoryRequest(limit=args.limit)
+    response = stub.GetTradeHistory(request)
+
+    print(f"\nRecent Trades (Last {args.limit}):")
+    print(f"{'Time':>19} {'Price':>10} {'Quantity':>10} {'Side':>6} {'Maker ID':>10} {'Taker ID':>10}")
+    print("-" * 70)
+
+    for trade in response.trades:
+        ts = datetime.fromtimestamp(trade.timestamp.seconds + trade.timestamp.nanos / 1e9)
+        price = Decimal(trade.price).quantize(Decimal('0.01'))
+        quantity = Decimal(trade.quantity).quantize(Decimal('0.01'))
+        side = "BID" if trade.side == 0 else "ASK"
+
+        print(f"{ts.strftime('%Y-%m-%d %H:%M:%S'):>19} "
+              f"{price:>10} "
+              f"{quantity:>10} "
+              f"{side:>6} "
+              f"{trade.maker_order_id:>10} "
+              f"{trade.taker_order_id:>10}")
+
 def main():
     parser = argparse.ArgumentParser(description='OrderBook CLI')
     subparsers = parser.add_subparsers(dest='command')
@@ -62,6 +84,9 @@ def main():
     book_parser = subparsers.add_parser('book')
     book_parser.add_argument('depth', type=int)
 
+    trades_parser = subparsers.add_parser('trades')
+    trades_parser.add_argument('limit', type=int, help='Number of recent trades to show')
+
     args = parser.parse_args()
     if not args.command:
         parser.print_help()
@@ -73,6 +98,8 @@ def main():
             place_order(stub, args)
         elif args.command == 'book':
             get_book(stub, args)
+        elif args.command == 'trades':
+            get_trades(stub, args)
     except grpc.RpcError as e:
         print(f"Error: {e.details()}")
 
