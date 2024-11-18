@@ -59,7 +59,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Set up Python and generate protobuf files
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
@@ -75,7 +74,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-          # Generate protobuf files
           mkdir -p generated
           python -m grpc_tools.protoc \
             -I../kobara-proto/proto \
@@ -85,25 +83,21 @@ jobs:
           sed -i 's/import orderbook_pb2/import generated.orderbook_pb2/' generated/orderbook_pb2_grpc.py
           touch generated/__init__.py
 
-          # Set PYTHONPATH
           echo "PYTHONPATH=$PWD" >> $GITHUB_ENV
 
-      # Start orderbook service
       - name: Build and start orderbook
         run: |
           docker build -t orderbook -f kobara-ob/Dockerfile .
           docker compose up -d orderbook
           timeout 30s bash -c 'until docker compose ps | grep -q "healthy"; do sleep 1; done'
 
-      # Run CLI tests
       - name: Run integration tests
         env:
           kobara_OB_HOST: localhost
         run: |
           cd kobara-cli
-          chmod +x invm
-          ./invm buy 10@100 sell 10@101
-          ./invm book 10
+          chmod +x integration_tests.sh
+          ./integration_tests.sh
 
       - name: Show logs on failure
         if: failure()
