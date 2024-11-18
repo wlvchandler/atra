@@ -132,26 +132,35 @@ fn measure_latency_distribution() -> Vec<Duration> {
 fn analyze_latency_distribution(c: &mut Criterion) {
     let mut group = c.benchmark_group("latency_distribution");
 
-    group.bench_function("measure_latencies", |b| {
-        b.iter(|| {
-            let latencies = measure_latency_distribution();
+    let id = "measure_latencies";
+    group.bench_function(id, |b| {
+        b.iter_with_setup(
+            || {
+                // run latency measurement
+                measure_latency_distribution()
+            },
+            |latencies| {
+                // calculate percentiles
+                let mut sorted_latencies = latencies.clone();
+                sorted_latencies.sort();
 
-            // Calculate percentiles
-            let mut sorted_latencies = latencies.clone();
-            sorted_latencies.sort();
+                let p50 = sorted_latencies[latencies.len() / 2];
+                let p95 = sorted_latencies[(latencies.len() as f64 * 0.95) as usize];
+                let p99 = sorted_latencies[(latencies.len() as f64 * 0.99) as usize];
 
-            let p50 = sorted_latencies[latencies.len() / 2];
-            let p95 = sorted_latencies[(latencies.len() as f64 * 0.95) as usize];
-            let p99 = sorted_latencies[(latencies.len() as f64 * 0.99) as usize];
-
-            println!("\nLatency Distribution:");
-            println!("p50: {:?}", p50);
-            println!("p95: {:?}", p95);
-            println!("p99: {:?}", p99);
-
-            black_box((p50, p95, p99))
-        })
+                black_box((p50, p95, p99))
+            }
+        );
     });
+
+    let sample_latencies = measure_latency_distribution();
+    let mut sorted_latencies = sample_latencies.clone();
+    sorted_latencies.sort();
+
+    println!("\nFinal Latency Distribution Summary:");
+    println!("p50: {:?}", sorted_latencies[sample_latencies.len() / 2]);
+    println!("p95: {:?}", sorted_latencies[(sample_latencies.len() as f64 * 0.95) as usize]);
+    println!("p99: {:?}", sorted_latencies[(sample_latencies.len() as f64 * 0.99) as usize]);
 
     group.finish();
 }
