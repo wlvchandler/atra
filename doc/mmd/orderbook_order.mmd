@@ -1,0 +1,19 @@
+classDiagram
+    class OrderBook {
+        +BTreeMap<Decimal, VecDeque<Order>> asks
+        +BTreeMap<Decimal, VecDeque<Order>> bids
+        +HashMap<u64, Order> orders
+    }
+
+    class Order {
+        +u64 id
+        +Decimal price
+        +Decimal quantity
+        +Decimal remaining_quantity
+        +Side side
+        +OrderType order_type
+        +OrderStatus status
+        +DateTime<Utc> timestamp
+    }
+
+    OrderBook "1" -- "*" Order : contains

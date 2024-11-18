@@ -1,0 +1,49 @@
+classDiagram
+    class MatchingEngine {
+        +OrderBook order_book
+        +TxnHistory trade_history
+        +place_order(Order) Order
+        +match_order(Order) Order
+        +get_order_book(depth) BookState
+    }
+
+    class OrderBook {
+        +BTreeMap~Decimal, VecDeque~Order~~ bids
+        +BTreeMap~Decimal, VecDeque~Order~~ asks
+        +HashMap~u64, Order~ orders
+        +place_order(Order)
+        +remove_order(OrderId)
+        +get_order_book(depth)
+    }
+
+    class TxnHistory {
+        +VecDeque~Trade~ trades
+        +add_trade(Trade)
+        +get_trades()
+        +get_recent_trades(limit)
+    }
+
+    class Order {
+        +u64 id
+        +Decimal price
+        +Decimal quantity
+        +Decimal remaining_quantity
+        +Side side
+        +OrderType order_type
+        +OrderStatus status
+        +DateTime timestamp
+    }
+
+    class Trade {
+        +u64 maker_order_id
+        +u64 taker_order_id
+        +Decimal price
+        +Decimal quantity
+        +Side side
+        +DateTime timestamp
+    }
+
+    MatchingEngine --> OrderBook
+    MatchingEngine --> TxnHistory
+    OrderBook --> Order
+    TxnHistory --> Trade

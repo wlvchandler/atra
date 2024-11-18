@@ -1,0 +1,25 @@
+sequenceDiagram
+    participant C as Client
+    participant S as gRPC Server
+    participant M as Matching Engine
+    participant O as Order Book
+    participant T as Trade History
+
+    C->>S: PlaceOrder(order)
+    S->>M: place_order(order)
+
+    alt Market Order
+        M->>O: match_order()
+        O-->>M: matching orders
+        M->>T: record_trades()
+    else Limit Order
+        M->>O: match_order()
+        O-->>M: matching orders
+        M->>T: record_trades()
+        opt Remaining Quantity > 0
+            M->>O: place_order()
+        end
+    end
+
+    M-->>S: order status
+    S-->>C: OrderResponse

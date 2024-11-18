@@ -1,0 +1,41 @@
+flowchart TD
+    subgraph Client["Client Layer"]
+        CLI["CLI (Python)"]
+        INVM["INVM Docker Wrapper"]
+    end
+
+    subgraph Proto["Protocol Layer"]
+        GRPC["gRPC Messages"]
+        direction TB
+        subgraph Messages
+            OR["OrderRequest"]
+            OBR["OrderBookRequest"]
+            THR["TradeHistoryRequest"]
+        end
+    end
+
+    subgraph Core["Core Engine"]
+        ME["Matching Engine"]
+        OB["Order Book"]
+        TH["Trade History"]
+
+        subgraph OrderBook["Order Book Structure"]
+            BIDS["BTreeMap<Price, Orders>"]
+            ASKS["BTreeMap<Price, Orders>"]
+            ORDERS["HashMap<OrderID, Order>"]
+        end
+
+        subgraph History["Trade History"]
+            TRADES["VecDeque<Trade>"]
+        end
+    end
+
+    CLI --> INVM
+    INVM --> GRPC
+    GRPC --> ME
+    ME --> OB
+    ME --> TH
+    OB --> BIDS
+    OB --> ASKS
+    OB --> ORDERS
+    TH --> TRADES

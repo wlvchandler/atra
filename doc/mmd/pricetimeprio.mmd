@@ -1,0 +1,28 @@
+graph TD
+    subgraph Price Level 100
+        P100[Price = 100]
+        O1[Order 1<br>t=1]
+        O2[Order 2<br>t=2]
+        O3[Order 3<br>t=3]
+        P100 --> O1
+        O1 --> O2
+        O2 --> O3
+    end
+
+    subgraph Price Level 99
+        P99[Price = 99]
+        O4[Order 4<br>t=4]
+        O5[Order 5<br>t=5]
+        P99 --> O4
+        O4 --> O5
+    end
+
+    subgraph Price Level 98
+        P98[Price = 98]
+        O6[Order 6<br>t=6]
+        P98 --> O6
+    end
+
+    BTree[BTree Index] --> P100
+    P100 --> P99
+    P99 --> P98

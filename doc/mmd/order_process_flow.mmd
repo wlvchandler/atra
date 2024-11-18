@@ -1,0 +1,26 @@
+stateDiagram-v2
+    [*] --> NewOrder: Order Request
+
+    NewOrder --> Validation: Validate Fields
+    Validation --> Matching: Valid
+    Validation --> Rejected: Invalid
+
+    state Matching {
+        [*] --> CheckOrderType
+        CheckOrderType --> Market: Market Order
+        CheckOrderType --> Limit: Limit Order
+
+        Market --> MatchMarket: Match at Best Price
+        Limit --> MatchLimit: Try Match
+
+        MatchLimit --> AddToBook: Remaining Qty
+        MatchLimit --> Complete: Fully Matched
+
+        MatchMarket --> Complete: Done
+    }
+
+    Matching --> Recording: Trades Generated
+    Recording --> Complete: Update History
+
+    Complete --> [*]: Return Response
+    Rejected --> [*]: Return Error
