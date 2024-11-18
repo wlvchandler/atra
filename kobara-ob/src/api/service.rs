@@ -7,7 +7,7 @@ use prost_types::Timestamp;
 use crate::core::MatchingEngine; // Updated import
 use crate::proto;
 use crate::proto::order_book_service_server::{OrderBookService as GrpcService, OrderBookServiceServer};
-use crate::proto::{OrderRequest, OrderResponse, GetOrderBookRequest, OrderBookResponse, GetOrderStatusRequest};
+use crate::proto::{OrderRequest, OrderResponse, GetOrderBookRequest, OrderBookResponse, GetOrderStatusRequest, CancelOrderRequest};
 use crate::core::{Order, OrderType, Side};
 use crate::proto::{GetTradeHistoryRequest, TradeHistoryResponse, Trade as ProtoTrade};
 
@@ -68,6 +68,31 @@ impl GrpcService for OrderBookService {
             timestamp: Some(Timestamp {
                 seconds: result.timestamp.timestamp(),
                 nanos: result.timestamp.timestamp_subsec_nanos() as i32,
+            }),
+        }))
+    }
+
+    async fn cancel_order(
+	&self,
+	request: Request<CancelOrderRequest>,
+    ) -> Result<Response<OrderResponse>, Status> {
+	let order_id = request.into_inner().order_id;
+	let cancelled_order = self.engine
+            .lock()
+            .map_err(|_| Status::internal("Lock error"))?
+            .cancel_order(order_id)
+            .ok_or_else(|| Status::not_found("Order not found or cannot be cancelled"))?;
+	Ok(Response::new(OrderResponse {
+            id: cancelled_order.id,
+            price: cancelled_order.price.to_string(),
+            quantity: cancelled_order.quantity.to_string(),
+            remaining_quantity: cancelled_order.remaining_quantity.to_string(),
+            side: cancelled_order.side as i32,
+            order_type: cancelled_order.order_type as i32,
+            status: cancelled_order.status as i32,
+            timestamp: Some(Timestamp {
+                seconds: cancelled_order.timestamp.timestamp(),
+                nanos: cancelled_order.timestamp.timestamp_subsec_nanos() as i32,
             }),
         }))
     }

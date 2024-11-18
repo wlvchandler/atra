@@ -43,6 +43,24 @@ impl MatchingEngine {
         order
     }
 
+
+    pub fn cancel_order(&mut self, order_id: u64) -> Option<Order> {
+	// first get the order to ensure it exists & can be cancelled
+	let order = match self.order_book.get_order_status(order_id) {
+	    Some(order) if order.status != OrderStatus::Filled && order.status != OrderStatus::Cancelled => {
+		let mut order = order.clone();
+		order.status = OrderStatus::Cancelled;
+		Some(order)
+	    }
+	    _ => None,
+	}?;
+
+	self.order_book.remove_order(order_id);
+	self.order_book.orders.insert(order_id, order.clone());
+	Some(order)
+    }
+
+
     /// --------
     /// core matcher against the book
     /// --------

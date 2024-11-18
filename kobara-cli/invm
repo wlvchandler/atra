@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import List, Tuple, Optional
 from generated.orderbook_pb2 import (
     OrderRequest, GetOrderBookRequest, GetOrderStatusRequest,
-    GetTradeHistoryRequest, Side, OrderType
+    GetTradeHistoryRequest, Side, OrderType, CancelOrderRequest
 )
 from generated.orderbook_pb2_grpc import OrderBookServiceStub
 
@@ -32,6 +32,19 @@ class OrderBookFormatter:
             return f"Order placed: ID={response.id}, Status={response.status}"
         else:  # csv format
             return f"order,{response.id},{response.status}"
+
+    #todo: combine w/ above
+    def format_cancel_response(self, response):
+        if self.output_format == 'json':
+            return json.dumps({
+                "id": response.id,
+                "status": response.status
+            })
+        elif self.output_format == 'pretty':
+            return f"Order cancelled: ID={response.id}, Status={response.status}"
+        else:  # csv format
+            return f"cancel,{response.id},{response.status}"
+
 
     def format_orderbook(self, response, depth):
         if self.output_format == 'json':
@@ -147,6 +160,11 @@ class OrderBookClient:
         response = self.stub.PlaceOrder(request)
         return self.formatter.format_order_response(response)
 
+    def cancel_order(self, order_id: int):
+        request = CancelOrderRequest(order_id=order_id)
+        response = self.stub.CancelOrder(request)
+        return self.formatter.format_cancel_response(response)
+
     def get_orderbook(self, depth: int):
         request = GetOrderBookRequest(depth=depth)
         response = self.stub.GetOrderBook(request)
@@ -224,13 +242,18 @@ def main():
     sell_parser = subparsers.add_parser('sell', help='Place sell orders')
     sell_parser.add_argument('orders', nargs='+', help='Orders in format: QUANTITY[@PRICE] ...')
 
+    cancel_parser = subparsers.add_parser('cancel', help='Cancel an existing order')
+    cancel_parser.add_argument('order_id', type=int, help='ID of the order to cancel')
+
     args = parser.parse_args()
 
     formatter = OrderBookFormatter(output_format=args.format)
     client = OrderBookClient(formatter, use_docker=args.docker and not args.local)
 
     try:
-        if args.command == 'book':
+        if args.command == 'cancel':
+            print(client.cancel_order(args.order_id))
+        elif args.command == 'book':
             print(client.get_orderbook(args.depth))
         elif args.command == 'trades':
             print(client.get_trades(args.limit))

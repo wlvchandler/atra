@@ -5,6 +5,7 @@ import "google/protobuf/timestamp.proto";
 
 service OrderBookService {
     rpc PlaceOrder      (OrderRequest)           returns (OrderResponse);
+    rpc CancelOrder     (CancelOrderRequest)     returns (OrderResponse);
     rpc GetOrderBook    (GetOrderBookRequest)    returns (OrderBookResponse);
     rpc GetOrderStatus  (GetOrderStatusRequest)  returns (OrderResponse);
     rpc GetTradeHistory (GetTradeHistoryRequest) returns (TradeHistoryResponse);
@@ -27,6 +28,10 @@ message OrderResponse {
   OrderType order_type = 6;
   OrderStatus status = 7;
   google.protobuf.Timestamp timestamp = 8;
+}
+
+message CancelOrderRequest {
+    uint64 order_id = 1;
 }
 
 message GetOrderBookRequest {
