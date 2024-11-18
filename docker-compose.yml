@@ -21,3 +21,4 @@ services:
 networks:
   kobara-net:
     driver: bridge
+    name: kobara

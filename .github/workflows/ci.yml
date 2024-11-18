@@ -1,79 +1,74 @@
 name: CI/CD
-
 on:
   push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - 'doc/**'
   pull_request:
+    types: [opened, synchronize]
   workflow_dispatch:
-
 env:
   CARGO_TERM_COLOR: always
-
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       # MENG/CLOB
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: kobara-ob
-
       - name: Install Protobuf Compiler
         run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
-
       - name: Build Rust
         run: cd kobara-ob && cargo build --verbose
-
       - name: Run Rust tests
         run: cd kobara-ob && cargo test --verbose
-
       # CLI
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
           cache: 'pip'
-
       - name: Install Python dependencies
         run: |
           cd kobara-cli
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
-
+          pip list
+      - name: Verify Python environment
+        run: |
+          python --version
+          pip --version
+          which python
+          which pip
       - name: Run Python tests
         run: |
           cd kobara-cli
+          python -m pip install pytest
           python -m pytest tests/ -v
 
-  build-docker:
+  integration:
     needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Build Orderbook image
-        run: docker build -t orderbook -f kobara-ob/Dockerfile .
-
-      - name: Build CLI image
-        run: docker build -t cli -f kobara-cli/Dockerfile .
-
-  integration:
-    needs: build-docker
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Build images
+      - name: Build images in parallel
         run: |
-          docker build -t orderbook -f kobara-ob/Dockerfile .
-          docker build -t cli -f kobara-cli/Dockerfile .
-
-      - name: Run integration tests
+          docker build -t orderbook -f kobara-ob/Dockerfile . &
+          docker build -t cli -f kobara-cli/Dockerfile . &
+          wait
+      - name: Start services
         run: |
+          docker compose down --volumes --remove-orphans || true
           docker compose up -d orderbook
-          sleep 5  # Give the server time to start
-          docker run --network $(docker network ls -q -f name=kobara) cli book 10
+          timeout 30s bash -c 'until docker compose ps | grep -q "healthy"; do sleep 1; done'
+          docker run --network kobara --rm  -e kobara_OB_HOST=orderbook cli book 10
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs orderbook
