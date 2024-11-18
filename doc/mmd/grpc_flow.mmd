@@ -1,0 +1,31 @@
+sequenceDiagram
+    participant Client
+    participant GrpcServer as OrderBookService
+    participant Engine as MatchingEngine
+    participant Book as OrderBook
+    participant History as TxnHistory
+
+    %% Place Order Flow
+    Client->>GrpcServer: PlaceOrder(OrderRequest)
+    GrpcServer->>GrpcServer: Convert to internal Order
+    GrpcServer->>Engine: place_order(Order)
+    Engine->>Book: match_order/place_order
+    Engine->>History: add_trade (if matched)
+    Engine-->>GrpcServer: Order
+    GrpcServer-->>Client: OrderResponse
+
+    %% Get Book Flow
+    Client->>GrpcServer: GetOrderBook(depth)
+    GrpcServer->>Engine: get_order_book(depth)
+    Engine->>Book: get_order_book(depth)
+    Book-->>Engine: (bids, asks)
+    Engine-->>GrpcServer: (bids, asks)
+    GrpcServer-->>Client: OrderBookResponse
+
+    %% Get Trade History Flow
+    Client->>GrpcServer: GetTradeHistory(limit)
+    GrpcServer->>Engine: get_trade_history(limit)
+    Engine->>History: get_recent_trades(limit)
+    History-->>Engine: Vec<Trade>
+    Engine-->>GrpcServer: Vec<Trade>
+    GrpcServer-->>Client: TradeHistoryResponse
