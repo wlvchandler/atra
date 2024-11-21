@@ -97,7 +97,7 @@ CLI for interacting with the backend. Meant to be a more raw but programmable AP
 Note: for `market` orders, price must be set as `0.0`
 
 
-#### kobaraVM CLI (`invm`)
+#### kobara CLI (`invm`)
 
 ```
 ./invm COMMAND [OPTIONS]

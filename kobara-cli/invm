@@ -218,7 +218,7 @@ def parse_compound_orders(args: List[str]) -> List[dict]:
     return orders
 
 def main():
-    parser = argparse.ArgumentParser(description='kobaraVM Order Book Interface')
+    parser = argparse.ArgumentParser(description='Order Book Interface')
 
     parser.add_argument('--format', choices=['csv', 'json', 'pretty'], default='csv',
                        help='Output format (default: csv)')
