@@ -1,3 +1,8 @@
+[![forthebadge](https://forthebadge.com/images/badges/powered-by-electricity.svg)](https://forthebadge.com)
+
+[![CI/CD](https://github.com/wlvchandler/kobara/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/wlvchandler/kobara/actions/workflows/ci.yml)
+
+----
 
 ### build/test instructions
 
