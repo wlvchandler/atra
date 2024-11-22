@@ -1,17 +1,17 @@
-# Kobara 
+# Atra 
 
 
 [![forthebadge](https://forthebadge.com/images/badges/powered-by-electricity.svg)](https://forthebadge.com)
-[![CI/CD](https://github.com/wlvchandler/kobara/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/wlvchandler/kobara/actions/workflows/ci.yml)
+[![CI/CD](https://github.com/wlvchandler/atra/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/wlvchandler/atra/actions/workflows/ci.yml)
 
 ## Components
 
 | Component | Description | Language | Role |
 |-----------|-------------|----------|------|
-| `kobara-ob` | Core matching engine | Rust | High-performance order matching and book management |
-| `kobara-cli` | Command-line interface | Python | User interaction and order entry |
-| `kobara-proto` | Protocol definitions | Protobuf | Shared data contracts and API specifications |
-| `kobara_gateway` | Real-time gateway | Elixir | Connection management and real-time engine access  |
+| `atra-ob` | Core matching engine | Rust | High-performance order matching and book management |
+| `atra-cli` | Command-line interface | Python | User interaction and order entry |
+| `atra-proto` | Protocol definitions | Protobuf | Shared data contracts and API specifications |
+| `atra_gateway` | Real-time gateway | Elixir | Connection management and real-time engine access  |
 
 
 ## Quick Start
@@ -19,7 +19,7 @@
 ```bash
 # Build all containers
 docker compose build
-docker build -t kobara-cli -f kobara-cli/Dockerfile .
+docker build -t atra-cli -f atra-cli/Dockerfile .
 
 # Start the matching engine
 docker compose up -d orderbook
@@ -52,7 +52,7 @@ Examples:
 
 ### Matching Engine (Rust)
 ```bash
-cd kobara-ob
+cd atra-ob
 cargo build
 
 # Run tests
@@ -64,14 +64,14 @@ cargo run --bin server
 
 ### CLI (Python)
 ```bash
-cd kobara-cli
+cd atra-cli
 ./scripts/setup_dev
 source venv/bin/activate
 ```
 
 ### Gateway (Elixir)
 ```bash
-cd kobara_gateway
+cd atra_gateway
 mix deps.get
 mix compile
 iex -S mix
@@ -79,10 +79,10 @@ iex -S mix
 
 ## Project Structure
 ```
-├── kobara-ob/        # Rust matching engine
-├── kobara-cli/       # Python CLI
-├── kobara-proto/     # Shared protocol definitions
-└── kobara_gateway/   # Elixir gateway service
+├── atra-ob/        # Rust matching engine
+├── atra-cli/       # Python CLI
+├── atra-proto/     # Shared protocol definitions
+└── atra_gateway/   # Elixir gateway service
 ```
 
 ## Documentation

@@ -3,7 +3,7 @@
 ## Components
 
 
-### Core / kobara-OB
+### Core / atra-OB
 
 #### Matching Engine (matchingengine.rs)
 
@@ -97,7 +97,7 @@ CLI for interacting with the backend. Meant to be a more raw but programmable AP
 Note: for `market` orders, price must be set as `0.0`
 
 
-#### kobara CLI (`invm`)
+#### atra CLI (`invm`)
 
 ```
 ./invm COMMAND [OPTIONS]

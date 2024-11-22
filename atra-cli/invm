@@ -1,0 +1,281 @@
+#!/usr/bin/env python3
+import argparse
+import sys
+import re
+import random
+import os
+import json
+import grpc
+from decimal import Decimal
+from datetime import datetime
+from typing import List, Tuple, Optional
+from generated.orderbook_pb2 import (
+    OrderRequest, GetOrderBookRequest, GetOrderStatusRequest,
+    GetTradeHistoryRequest, Side, OrderType, CancelOrderRequest
+)
+from generated.orderbook_pb2_grpc import OrderBookServiceStub
+
+class OrderBookFormatter:
+    def __init__(self, output_format='csv'):
+        """
+        output_format: 'csv' (default), 'json', or 'pretty'
+        """
+        self.output_format = output_format
+
+    def format_order_response(self, response):
+        if self.output_format == 'json':
+            return json.dumps({
+                "id": response.id,
+                "status": response.status
+            })
+        elif self.output_format == 'pretty':
+            return f"Order placed: ID={response.id}, Status={response.status}"
+        else:  # csv format
+            return f"order,{response.id},{response.status}"
+
+    #todo: combine w/ above
+    def format_cancel_response(self, response):
+        if self.output_format == 'json':
+            return json.dumps({
+                "id": response.id,
+                "status": response.status
+            })
+        elif self.output_format == 'pretty':
+            return f"Order cancelled: ID={response.id}, Status={response.status}"
+        else:  # csv format
+            return f"cancel,{response.id},{response.status}"
+
+
+    def format_orderbook(self, response, depth):
+        if self.output_format == 'json':
+            return json.dumps({
+                "bids": [{"price": level.price, "quantity": level.quantity}
+                        for level in sorted(response.bids, key=lambda x: Decimal(x.price), reverse=True)],
+                "asks": [{"price": level.price, "quantity": level.quantity}
+                        for level in sorted(response.asks, key=lambda x: Decimal(x.price))]
+            })
+        elif self.output_format == 'pretty':
+            output = [
+                f"\natraOB (Max depth {depth}):",
+                f"{'Price':>10} {'Quantity':>10} {'Side':>6}",
+                "-" * 30
+            ]
+
+            for level in sorted(response.bids, key=lambda x: Decimal(x.price), reverse=True):
+                price = Decimal(level.price).quantize(Decimal('0.01'))
+                quantity = Decimal(level.quantity).quantize(Decimal('0.01'))
+                output.append(f"{price:>10} {quantity:>10} {'BID':>6}")
+
+            output.append("-" * 30)
+
+            for level in sorted(response.asks, key=lambda x: Decimal(x.price)):
+                price = Decimal(level.price).quantize(Decimal('0.01'))
+                quantity = Decimal(level.quantity).quantize(Decimal('0.01'))
+                output.append(f"{price:>10} {quantity:>10} {'ASK':>6}")
+
+            return "\n".join(output)
+        else:  # csv format
+            lines = []
+            # Format: type,side,price,quantity
+            for level in sorted(response.bids, key=lambda x: Decimal(x.price), reverse=True):
+                lines.append(f"level,bid,{level.price},{level.quantity}")
+            for level in sorted(response.asks, key=lambda x: Decimal(x.price)):
+                lines.append(f"level,ask,{level.price},{level.quantity}")
+            return "\n".join(lines)
+
+    def format_trades(self, response, limit):
+        if self.output_format == 'json':
+            return json.dumps({
+                "trades": [{
+                    "timestamp": trade.timestamp.seconds + trade.timestamp.nanos / 1e9,
+                    "price": trade.price,
+                    "quantity": trade.quantity,
+                    "side": "BID" if trade.side == 0 else "ASK",
+                    "maker_order_id": trade.maker_order_id,
+                    "taker_order_id": trade.taker_order_id
+                } for trade in response.trades]
+            })
+        elif self.output_format == 'pretty':
+            output = [
+                f"\nRecent Trades (Last {limit}):",
+                f"{'Time':>19} {'Price':>10} {'Quantity':>10} {'Side':>6} {'Maker ID':>10} {'Taker ID':>10}",
+                "-" * 70
+            ]
+
+            for trade in response.trades:
+                ts = datetime.fromtimestamp(trade.timestamp.seconds + trade.timestamp.nanos / 1e9)
+                price = Decimal(trade.price).quantize(Decimal('0.01'))
+                quantity = Decimal(trade.quantity).quantize(Decimal('0.01'))
+                side = "BID" if trade.side == 0 else "ASK"
+
+                output.append(
+                    f"{ts.strftime('%Y-%m-%d %H:%M:%S'):>19} "
+                    f"{price:>10} "
+                    f"{quantity:>10} "
+                    f"{side:>6} "
+                    f"{trade.maker_order_id:>10} "
+                    f"{trade.taker_order_id:>10}"
+                )
+
+            return "\n".join(output)
+        else:  # csv format
+            # Format: type,timestamp,price,quantity,side,maker_id,taker_id
+            return "\n".join(
+                f"trade,{trade.timestamp.seconds + trade.timestamp.nanos / 1e9},"
+                f"{trade.price},{trade.quantity},"
+                f"{'bid' if trade.side == 0 else 'ask'},"
+                f"{trade.maker_order_id},{trade.taker_order_id}"
+                for trade in response.trades
+            )
+
+class OrderBookClient:
+    def __init__(self, formatter: OrderBookFormatter, use_docker: bool = False):
+        self.formatter = formatter
+        self.use_docker = use_docker
+        self._stub: Optional[OrderBookServiceStub] = None
+
+    @property
+    def stub(self):
+        if self._stub is None:
+            self._stub = self._connect()
+        return self._stub
+
+    def _connect(self):
+        if self.use_docker:
+            host = 'orderbook'
+        else:
+            host = os.getenv('atra_OB_HOST', '127.0.0.1')
+        port = os.getenv('atra_OB_PORT', '50051')
+        channel = grpc.insecure_channel(f'{host}:{port}')
+        return OrderBookServiceStub(channel)
+
+    def place_order(self, order: dict):
+        request = OrderRequest(
+            id=order['id'],
+            price=str(Decimal(order['price'])),
+            quantity=str(Decimal(order['quantity'])),
+            side=Side.BID if order['side'].upper() == "BID" else Side.ASK,
+            order_type=OrderType.LIMIT if order['type'].upper() == "LIMIT" else OrderType.MARKET
+        )
+        response = self.stub.PlaceOrder(request)
+        return self.formatter.format_order_response(response)
+
+    def cancel_order(self, order_id: int):
+        request = CancelOrderRequest(order_id=order_id)
+        response = self.stub.CancelOrder(request)
+        return self.formatter.format_cancel_response(response)
+
+    def get_orderbook(self, depth: int):
+        request = GetOrderBookRequest(depth=depth)
+        response = self.stub.GetOrderBook(request)
+        return self.formatter.format_orderbook(response, depth)
+
+    def get_trades(self, limit: int):
+        request = GetTradeHistoryRequest(limit=limit)
+        response = self.stub.GetTradeHistory(request)
+        return self.formatter.format_trades(response, limit)
+
+def generate_order_id() -> int:
+    return random.randint(1, 1000000)
+
+def parse_order(order_str: str) -> Tuple[str, float, float]:
+    if '@' in order_str:
+        quantity, price = order_str.split('@')
+        return ('limit', float(price), float(quantity))
+    else:
+        return ('market', 0.0, float(order_str))
+
+def parse_compound_orders(args: List[str]) -> List[dict]:
+    orders = []
+    current_side = None
+
+    i = 0
+    while i < len(args):
+        arg = args[i].lower()
+
+        if arg in ['buy', 'sell']:
+            current_side = 'bid' if arg == 'buy' else 'ask'
+            i += 1
+            continue
+
+        if not current_side:
+            raise ValueError("Must specify buy or sell before quantities")
+
+        try:
+            order_type, price, quantity = parse_order(args[i])
+            orders.append({
+                'id': generate_order_id(),
+                'side': current_side,
+                'type': order_type,
+                'price': price,
+                'quantity': quantity
+            })
+        except ValueError as e:
+            raise ValueError(f"Invalid order format: {args[i]}")
+
+        i += 1
+
+    return orders
+
+def main():
+    parser = argparse.ArgumentParser(description='Order Book Interface')
+
+    parser.add_argument('--format', choices=['csv', 'json', 'pretty'], default='csv',
+                       help='Output format (default: csv)')
+    parser.add_argument('--docker', action='store_true', help='Use Docker for execution')
+    parser.add_argument('--local', action='store_true', help='Force local execution')
+
+    subparsers = parser.add_subparsers(dest='command')
+
+    book_parser = subparsers.add_parser('book', help='Show order book')
+    book_parser.add_argument('depth', type=int, nargs='?', default=10)
+
+    trades_parser = subparsers.add_parser('trades', help='Show recent trades')
+    trades_parser.add_argument('limit', type=int, nargs='?', default=10)
+
+    orders_parser = subparsers.add_parser('orders', help='Place multiple orders')
+    orders_parser.add_argument('orders', nargs='+', help='Orders in format: buy/sell QUANTITY[@PRICE] ...')
+
+    buy_parser = subparsers.add_parser('buy', help='Place buy orders')
+    buy_parser.add_argument('orders', nargs='+', help='Orders in format: QUANTITY[@PRICE] ...')
+
+    sell_parser = subparsers.add_parser('sell', help='Place sell orders')
+    sell_parser.add_argument('orders', nargs='+', help='Orders in format: QUANTITY[@PRICE] ...')
+
+    cancel_parser = subparsers.add_parser('cancel', help='Cancel an existing order')
+    cancel_parser.add_argument('order_id', type=int, help='ID of the order to cancel')
+
+    args = parser.parse_args()
+
+    formatter = OrderBookFormatter(output_format=args.format)
+    client = OrderBookClient(formatter, use_docker=args.docker and not args.local)
+
+    try:
+        if args.command == 'cancel':
+            print(client.cancel_order(args.order_id))
+        elif args.command == 'book':
+            print(client.get_orderbook(args.depth))
+        elif args.command == 'trades':
+            print(client.get_trades(args.limit))
+        elif args.command == 'orders':
+            orders = parse_compound_orders(args.orders)
+            for order in orders:
+                print(client.place_order(order))
+        elif args.command in ['buy', 'sell']:
+            # Prepend the side to the orders
+            full_args = [args.command] + args.orders
+            orders = parse_compound_orders(full_args)
+            for order in orders:
+                print(client.place_order(order))
+        else:
+            parser.print_help()
+
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+    except grpc.RpcError as e:
+        print(f"Error: {e.details()}", file=sys.stderr)
+        sys.exit(1)
+
+if __name__ == '__main__':
+    main()

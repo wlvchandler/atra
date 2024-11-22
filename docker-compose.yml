@@ -4,13 +4,13 @@ services:
   orderbook:
     build:
       context: .
-      dockerfile: kobara-ob/Dockerfile
+      dockerfile: atra-ob/Dockerfile
     ports:
       - "50051:50051"
     environment:
       - BIND_ADDRESS=0.0.0.0:50051
     networks:
-      - kobara-net
+      - atra-net
     healthcheck:
       test: ["CMD", "nc", "-zv", "localhost", "50051"]
       interval: 10s
@@ -19,6 +19,6 @@ services:
       start_period: 5s
 
 networks:
-  kobara-net:
+  atra-net:
     driver: bridge
-    name: kobara
+    name: atra

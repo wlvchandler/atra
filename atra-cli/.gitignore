@@ -1,0 +1,25 @@
+*~
+generated/
+venv/
+__pycache__/
+*.py[cod]
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Generated protobuf files
+atra-cli/atra_cli/generated/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+*.log
