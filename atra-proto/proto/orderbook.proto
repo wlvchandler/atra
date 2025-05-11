@@ -4,30 +4,31 @@ package orderbook;
 import "google/protobuf/timestamp.proto";
 
 service OrderBookService {
-    rpc PlaceOrder      (OrderRequest)           returns (OrderResponse);
-    rpc CancelOrder     (CancelOrderRequest)     returns (OrderResponse);
-    rpc GetOrderBook    (GetOrderBookRequest)    returns (OrderBookResponse);
-    rpc GetOrderStatus  (GetOrderStatusRequest)  returns (OrderResponse);
-    rpc GetTradeHistory (GetTradeHistoryRequest) returns (TradeHistoryResponse);
+    rpc place_order         (OrderRequest)           returns (OrderResponse);
+    rpc cancel_order        (CancelOrderRequest)     returns (OrderResponse);
+    rpc get_order_book      (GetOrderBookRequest)    returns (OrderBookResponse);
+    rpc get_order_status    (GetOrderStatusRequest)  returns (OrderResponse);
+    rpc get_trade_history   (GetTradeHistoryRequest) returns (TradeHistoryResponse);
+    rpc place_orders        (OrderBatchRequest)      returns (OrderBatchResponse);
 }
 
 message OrderRequest {
-  uint64 id = 1;
-  string price = 2;  // in a real system we'd use decimal for these
-  string quantity = 3;
-  Side side = 4;
-  OrderType order_type = 5;
+    uint64 id = 1;
+    string price = 2;
+    string quantity = 3;
+    Side side = 4;
+    OrderType order_type = 5;
 }
 
 message OrderResponse {
-  uint64 id = 1;
-  string price = 2;
-  string quantity = 3;
-  string remaining_quantity = 4;
-  Side side = 5;
-  OrderType order_type = 6;
-  OrderStatus status = 7;
-  google.protobuf.Timestamp timestamp = 8;
+    uint64 id = 1;
+    string price = 2;
+    string quantity = 3;
+    string remaining_quantity = 4;
+    Side side = 5;
+    OrderType order_type = 6;
+    OrderStatus status = 7;
+    google.protobuf.Timestamp timestamp = 8;
 }
 
 message CancelOrderRequest {
@@ -35,26 +36,25 @@ message CancelOrderRequest {
 }
 
 message GetOrderBookRequest {
-  uint32 depth = 1;
+    uint32 depth = 1;
 }
 
 message OrderBookLevel {
-  string price = 1;
-  string quantity = 2;
+    string price = 1;
+    string quantity = 2;
 }
 
 message OrderBookResponse {
-  repeated OrderBookLevel bids = 1;
-  repeated OrderBookLevel asks = 2;
+    repeated OrderBookLevel bids = 1;
+    repeated OrderBookLevel asks = 2;
 }
 
 message GetOrderStatusRequest {
-  uint64 order_id = 1;
+    uint64 order_id = 1;
 }
 
-
 message GetTradeHistoryRequest {
-    uint32 limit = 1;  // how many recent trades to return
+    uint32 limit = 1;
 }
 
 message Trade {
@@ -70,20 +70,27 @@ message TradeHistoryResponse {
     repeated Trade trades = 1;
 }
 
+message OrderBatchRequest {
+    repeated OrderRequest orders = 1;
+}
+
+message OrderBatchResponse {
+    repeated OrderResponse orders = 1;
+}
 
 enum Side {
-  BID = 0;
-  ASK = 1;
+    BID = 0;
+    ASK = 1;
 }
 
 enum OrderType {
-  LIMIT = 0;
-  MARKET = 1;
+    LIMIT = 0;
+    MARKET = 1;
 }
 
 enum OrderStatus {
-  PENDING = 0;
-  PARTIALLY_FILLED = 1;
-  FILLED = 2;
-  CANCELLED = 3;
+    PENDING = 0;
+    PARTIALLY_FILLED = 1;
+    FILLED = 2;
+    CANCELLED = 3;
 }

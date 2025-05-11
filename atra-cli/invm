@@ -157,22 +157,22 @@ class OrderBookClient:
             side=Side.BID if order['side'].upper() == "BID" else Side.ASK,
             order_type=OrderType.LIMIT if order['type'].upper() == "LIMIT" else OrderType.MARKET
         )
-        response = self.stub.PlaceOrder(request)
+        response = self.stub.place_order(request)
         return self.formatter.format_order_response(response)
 
     def cancel_order(self, order_id: int):
         request = CancelOrderRequest(order_id=order_id)
-        response = self.stub.CancelOrder(request)
+        response = self.stub.cancel_order(request)
         return self.formatter.format_cancel_response(response)
 
     def get_orderbook(self, depth: int):
         request = GetOrderBookRequest(depth=depth)
-        response = self.stub.GetOrderBook(request)
+        response = self.stub.get_order_book(request)
         return self.formatter.format_orderbook(response, depth)
 
     def get_trades(self, limit: int):
         request = GetTradeHistoryRequest(limit=limit)
-        response = self.stub.GetTradeHistory(request)
+        response = self.stub.get_trade_history(request)
         return self.formatter.format_trades(response, limit)
 
 def generate_order_id() -> int:

@@ -7,7 +7,7 @@ use prost_types::Timestamp;
 use crate::core::MatchingEngine; // Updated import
 use crate::proto;
 use crate::proto::order_book_service_server::{OrderBookService as GrpcService, OrderBookServiceServer};
-use crate::proto::{OrderRequest, OrderResponse, GetOrderBookRequest, OrderBookResponse, GetOrderStatusRequest, CancelOrderRequest};
+use crate::proto::{OrderRequest, OrderResponse, OrderBatchRequest, OrderBatchResponse, GetOrderBookRequest, OrderBookResponse, GetOrderStatusRequest, CancelOrderRequest};
 use crate::core::{Order, OrderType, Side};
 use crate::proto::{GetTradeHistoryRequest, TradeHistoryResponse, Trade as ProtoTrade};
 
@@ -71,6 +71,15 @@ impl GrpcService for OrderBookService {
             }),
         }))
     }
+
+    // placeholder for now
+    async fn place_orders(
+	&self,
+	request: Request<OrderBatchRequest>,
+    ) -> Result<Response<OrderBatchResponse>, Status> {
+	Ok(Response::new(OrderBatchResponse{orders:Vec::new()}))
+    }
+    
 
     async fn cancel_order(
 	&self,

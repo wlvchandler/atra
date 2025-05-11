@@ -113,10 +113,12 @@ def main():
 
     # Final instructions
     print(ColoredOutput.bold("\n✨ Setup complete! Next steps:"))
-    print(ColoredOutput.info(f"\n1. Activate your virtual environment:"))
+    print(ColoredOutput.info(f"\n1. Activate virtual environment:"))
     print(f"   {activate_cmd}")
     print(ColoredOutput.info("\n2. Run the CLI:"))
-    print("   python cli.py <command>")
+    print("   ./invm <command>")
+    print("\n")
+    print("You may need to run `ln -sf atra-cli/invm invm` from the root directory of the repo")
     print("\n")
 
 if __name__ == "__main__":

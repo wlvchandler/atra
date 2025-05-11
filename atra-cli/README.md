@@ -4,7 +4,7 @@ I used python3.10 but I believe this should work for other nearby versions as we
 
 Set up venv and generate grpc connectors:
 ```
-python scripts/setup_dev.py
+python scripts/setup_env
 ```
 
 then activate venv:
@@ -14,75 +14,74 @@ source venv/bin/activate
 
 
 cli examples (subject to change of course):
-```
-# ./cli.py {book|place}
-# ./cli.py place {id} {price} {qty} {bid|ask} {limit|market}
-
-(venv) will@DESKTOP-71HHMI5:~/Projects/kote/atra-cli
-$ python cli.py place 1 100.00 10.00 bid limit
-Order placed: ID=1, Status=0
-
-(venv) will@DESKTOP-71HHMI5:~/Projects/kote/atra-cli
-$ python cli.py place 2 99.50 5.00 bid limit
-
-Order placed: ID=2, Status=0
-(venv) will@DESKTOP-71HHMI5:~/Projects/kote/atra-cli
-$ python cli.py place 3 101.00 7.00 ask limit
-Order placed: ID=3, Status=0
-
-(venv) will@DESKTOP-71HHMI5:~/Projects/kote/atra-cli
-$ python cli.py book 10
-
-Bids:
-  100: 10
-  99.5: 5
-
-Asks:
-  101: 7
-
-
-# now placing some orders that should match...
-
-(venv) will@DESKTOP-71HHMI5:~/Projects/kote/atra-cli
-$ python cli.py place 4 101.00 3.00 bid limit
-Order placed: ID=4, Status=2
-
-(venv) will@DESKTOP-71HHMI5:~/Projects/kote/atra-cli
-$ python cli.py book 10
-
-Bids:
-  100: 10
-  99.5: 5
-
-Asks:
-  101: 4  # yay
-
-(venv) will@DESKTOP-71HHMI5:~/Projects/kote/atra-cli
-$ python cli.py place 5 99.50 2.00 ask limit
-Order placed: ID=5, Status=2
-
-(venv) will@DESKTOP-71HHMI5:~/Projects/kote/atra-cli
-$ python cli.py book 10
-
-Bids:
-  100: 8  # yay
-  99.5: 5
-
-Asks:
-  101: 4
-
-(venv) will@DESKTOP-71HHMI5:~/Projects/kote/atra-cli
-$ python cli.py place 6 0 2.00 bid market
-Order placed: ID=6, Status=2
-
-(venv) will@DESKTOP-71HHMI5:~/Projects/kote/atra-cli
-$ python cli.py book 10
-
-Bids:
-  100: 8
-  99.5: 5
-
-Asks:
-  101: 2  # yay
 
 ```
+# General command structure:
+# invm <command> [arguments...] [--format {csv|json|pretty}]
+```
+
+### Basic examples
+
+```
+$ invm buy 10.00@100.00 --format pretty
+Order placed: ID=1, Status=PENDING
+
+$ invm buy 5.00@99.50 --format pretty
+Order placed: ID=2, Status=PENDING
+
+$ invm sell 7.00@101.00 --format pretty
+Order placed: ID=3, Status=PENDING
+
+$ invm book 10 --format pretty
+
+atraOB (Max depth 10):
+     Price   Quantity   Side
+------------------------------
+    100.00      10.00    BID
+     99.50       5.00    BID
+------------------------------
+    101.00       7.00    ASK
+```
+
+#### now placing some orders that should match...
+
+```
+$ invm buy 3.00@101.00 --format pretty
+Order placed: ID=4, Status=FILLED
+
+$ invm book 10 --format pretty
+
+atraOB (Max depth 10):
+     Price   Quantity   Side
+------------------------------
+    100.00      10.00    BID
+     99.50       5.00    BID
+------------------------------
+    101.00       4.00    ASK # yay
+
+$ invm sell 2.00@99.50 --format pretty
+Order placed: ID=5, Status=FILLED
+
+$ invm book 10 --format pretty
+
+atraOB (Max depth 10):
+     Price   Quantity   Side
+------------------------------
+    100.00       8.00    BID # yay
+     99.50       5.00    BID
+------------------------------
+    101.00       4.00    ASK
+
+$ invm buy 2.00 --format pretty 
+Order placed: ID=6, Status=FILLED
+
+$ invm book 10 --format pretty
+
+atraOB (Max depth 10):
+     Price   Quantity   Side
+------------------------------
+    100.00       8.00    BID
+     99.50       5.00    BID
+------------------------------
+    101.00       2.00    ASK # yay
+```    
