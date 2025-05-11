@@ -5,7 +5,6 @@ import sys
 from pathlib import Path
 import logging
 
-# Set up logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(message)s',
@@ -67,14 +66,12 @@ def main():
     generated_dir = project_dir / "generated"
 
     print(ColoredOutput.bold("\n🔧 Setting up development environment...\n"))
-
-    # Create virtual environment
     print(ColoredOutput.info("📦 Creating virtual environment..."))
     subprocess.run([sys.executable, "-m", "venv", venv_dir],
                   check=True,
                   capture_output=True)
 
-    _hmsg = '\n--------\n-atraCLI-\nHelp:\n\t./cli.py -h {{book|place} -h}\n--------\n'
+    _hmsg = '\n--------\n-atraCLI-\nHelp:\n\t./invm -h {{book|place} -h}\n--------\n'
     if os.name == "nt":
         activate_file = venv_dir / "Scripts" / "activate.bat"
         message = f"echo {_hmsg}"
@@ -86,7 +83,6 @@ def main():
         f.write(f"\n{message}\n")
     print(ColoredOutput.success("✓ Virtual environment created"))
 
-    # Determine paths based on OS
     if os.name == "nt":  # Windows
         python_path = venv_dir / "Scripts" / "python.exe"
         pip_path = venv_dir / "Scripts" / "pip.exe"
@@ -96,29 +92,27 @@ def main():
         pip_path = venv_dir / "bin" / "pip"
         activate_cmd = "source venv/bin/activate"
 
-    # Install requirements
     print(ColoredOutput.info("\n📥 Installing requirements..."))
     requirements_file = project_dir / "requirements.txt"
     run_command([pip_path, "install", "-r", requirements_file])
     print(ColoredOutput.success("✓ Dependencies installed"))
 
-    # Create generated directory
     generated_dir.mkdir(exist_ok=True)
 
-    # Generate proto files
     print(ColoredOutput.info("\n🔨 Generating proto files..."))
     proto_script = project_dir / "scripts" / "generate_proto.py"
     run_command([python_path, proto_script])
     print(ColoredOutput.success("✓ Proto files generated"))
 
-    # Final instructions
     print(ColoredOutput.bold("\n✨ Setup complete! Next steps:"))
     print(ColoredOutput.info(f"\n1. Activate virtual environment:"))
     print(f"   {activate_cmd}")
     print(ColoredOutput.info("\n2. Run the CLI:"))
     print("   ./invm <command>")
     print("\n")
-    print("You may need to run `ln -sf atra-cli/invm invm` from the root directory of the repo")
+    print("You may need to set a link to `atra-cli/invm` in the root directory of the repo")
+    print("\n")
+    print("linux:\tln -sf atra-cli/invm invm")
     print("\n")
 
 if __name__ == "__main__":
