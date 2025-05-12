@@ -8,9 +8,9 @@ RUN apt-get update && \
 
 COPY atra-proto/proto /usr/src/app/atra-proto/proto
 
-COPY atra-cli /usr/src/app/atra-cli
+COPY cli /usr/src/app/cli
 
-WORKDIR /usr/src/app/atra-cli
+WORKDIR /usr/src/app/cli
 RUN pip install --no-cache-dir -r requirements.txt
 
 RUN mkdir -p generated && \
@@ -21,8 +21,8 @@ RUN mkdir -p generated && \
     ../atra-proto/proto/orderbook.proto && \
     sed -i 's/import orderbook_pb2/import generated.orderbook_pb2/' generated/orderbook_pb2_grpc.py
 
-ENV PYTHONPATH=/usr/src/app/atra-cli
+ENV PYTHONPATH=/usr/src/app/cli
 
 RUN touch generated/__init__.py
 
-ENTRYPOINT ["./invm"]
+ENTRYPOINT ["./atra"]

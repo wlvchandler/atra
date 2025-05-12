@@ -87,8 +87,8 @@ jobs:
 
       - name: Build and start orderbook
         run: |
-          docker build -t orderbook -f atra-ob/Dockerfile .
-          docker compose up -d orderbook
+          docker build -t matcher -f atra-ob/Dockerfile .
+          docker compose up -d matcher
           timeout 30s bash -c 'until docker compose ps | grep -q "healthy"; do sleep 1; done'
 
       - name: Run integration tests

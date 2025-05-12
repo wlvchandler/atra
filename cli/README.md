@@ -1,38 +1,71 @@
-I used python3.10 but I believe this should work for other nearby versions as well.
+# Atra CLI
 
-### dev/testing setup
+## Installation & Setup
 
-Set up venv and generate grpc connectors:
-```
-python scripts/setup_env
+### Quick Start (Users)
+
+```bash
+# Install from PyPI
+pip install atra-cli
+
+# Use the CLI
+atra book 10
+# or
+atra book 10
 ```
 
-then activate venv:
-```
-source venv/bin/activate
+### Development Setup
+
+```bash
+# Initialize the environment (creates venv and installs dependencies)
+./atra init
+
+# Use the CLI
+./atra book 10
+./atra trades 5
+./atra buy 10@100
 ```
 
+## Docker Usage
+
+```bash
+# Using docker-compose
+docker-compose run cli book 10
+```
+
+## Common Commands
+
+- View the order book: `atra book [depth]`
+- View recent trades: `atra trades [limit]`
+- Place buy orders: `atra buy 10@100`
+- Place sell orders: `atra sell 5@95`
+- Cancel an order: `atra cancel [order_id]`
+
+For more information on available commands:
+```bash
+atra -h
+```
 
 cli examples (subject to change of course):
 
 ```
 # General command structure:
-# invm <command> [arguments...] [--format {csv|json|pretty}]
+# atra <command> [arguments...] [--format {csv|json|pretty}]
 ```
 
 ### Basic examples
 
 ```
-$ invm buy 10.00@100.00 --format pretty
+$ atra buy 10.00@100.00 --format pretty
 Order placed: ID=1, Status=PENDING
 
-$ invm buy 5.00@99.50 --format pretty
+$ atra buy 5.00@99.50 --format pretty
 Order placed: ID=2, Status=PENDING
 
-$ invm sell 7.00@101.00 --format pretty
+$ atra sell 7.00@101.00 --format pretty
 Order placed: ID=3, Status=PENDING
 
-$ invm book 10 --format pretty
+$ atra book 10 --format pretty
 
 atraOB (Max depth 10):
      Price   Quantity   Side
@@ -46,10 +79,10 @@ atraOB (Max depth 10):
 #### now placing some orders that should match...
 
 ```
-$ invm buy 3.00@101.00 --format pretty
+$ atra buy 3.00@101.00 --format pretty
 Order placed: ID=4, Status=FILLED
 
-$ invm book 10 --format pretty
+$ atra book 10 --format pretty
 
 atraOB (Max depth 10):
      Price   Quantity   Side
@@ -59,10 +92,10 @@ atraOB (Max depth 10):
 ------------------------------
     101.00       4.00    ASK # yay
 
-$ invm sell 2.00@99.50 --format pretty
+$ atra sell 2.00@99.50 --format pretty
 Order placed: ID=5, Status=FILLED
 
-$ invm book 10 --format pretty
+$ atra book 10 --format pretty
 
 atraOB (Max depth 10):
      Price   Quantity   Side
@@ -72,10 +105,10 @@ atraOB (Max depth 10):
 ------------------------------
     101.00       4.00    ASK
 
-$ invm buy 2.00 --format pretty 
+$ atra buy 2.00 --format pretty 
 Order placed: ID=6, Status=FILLED
 
-$ invm book 10 --format pretty
+$ atra book 10 --format pretty
 
 atraOB (Max depth 10):
      Price   Quantity   Side

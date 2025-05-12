@@ -1,10 +1,13 @@
-version: '3.8'
-
 services:
-  orderbook:
+  matcher:
     build:
       context: .
       dockerfile: atra-ob/Dockerfile
+      tags:
+        - "atra/matcher:${IMAGE_TAG:-latest}"
+        - "atra/matcher:${GIT_COMMIT_SHA}"
+        - "atra/matcher:latest" # for now.
+    image: "atra/matcher:${IMAGE_TAG:-latest}"
     ports:
       - "50051:50051"
     environment:
@@ -17,6 +20,21 @@ services:
       timeout: 5s
       retries: 5
       start_period: 5s
+  
+  cli:
+    build:
+      context: .
+      dockerfile: cli/Dockerfile
+      tags:
+        - "atra/cli:${IMAGE_TAG:-latest}"
+        - "atra/cli:${GIT_COMMIT_SHA}"
+        - "atra/cli:latest" # for now.
+    image: "atra/cli:${IMAGE_TAG:-latest}"
+    networks:
+      - atra-net
+    depends_on:
+      matcher:
+        condition: service_healthy
 
 networks:
   atra-net:
