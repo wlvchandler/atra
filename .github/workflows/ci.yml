@@ -103,4 +103,4 @@ jobs:
         if: failure()
         run: |
           docker compose ps
-          docker compose logs orderbook
+          docker compose logs matcher
