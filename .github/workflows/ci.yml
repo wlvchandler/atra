@@ -37,7 +37,7 @@ jobs:
           cache: 'pip'
       - name: Install Python dependencies
         run: |
-          cd atra-cli
+          cd cli
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip list
@@ -49,7 +49,7 @@ jobs:
           which pip
       - name: Run Python tests
         run: |
-          cd atra-cli
+          cd cli
           python -m pip install pytest
           python -m pytest tests/ -v
 
@@ -70,7 +70,7 @@ jobs:
 
       - name: Install Python dependencies and generate protos
         run: |
-          cd atra-cli
+          cd cli
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
@@ -95,7 +95,7 @@ jobs:
         env:
           atra_OB_HOST: localhost
         run: |
-          cd atra-cli
+          cd cli
           chmod +x integration_tests.sh
           ./integration_tests.sh
 
