@@ -13,6 +13,11 @@ def main():
     
     repo_root = get_repo_root()
     args = sys.argv[1:]
+
+    if args and args[0] == 'clean':
+        from cli.utils.cleanup import CleanupManager
+        CleanupManager.clean_all()
+        return
     
     if args and args[0] == 'init':
         from cli.setup import environment
