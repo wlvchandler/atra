@@ -23,7 +23,6 @@ setup(
     entry_points={
         'console_scripts': [
             'atra=cli.__main__:main',
-            'atra=cli.__main__:main',
         ],
     },
     classifiers=[

@@ -1,3 +1,5 @@
+# https://packaging.python.org/en/latest/guides/writing-pyproject-toml/
+
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
@@ -27,7 +29,6 @@ dependencies = [
 
 [project.scripts]
 atra = "cli.__main__:main"
-atra = "cli.__main__:main"  # alias for convenience
 
 [project.optional-dependencies]
 dev = [
