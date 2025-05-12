@@ -24,7 +24,7 @@ services:
   cli:
     build:
       context: .
-      dockerfile: atra-cli/Dockerfile
+      dockerfile: cli/Dockerfile
       tags:
         - "atra/cli:${IMAGE_TAG:-latest}"
         - "atra/cli:${GIT_COMMIT_SHA}"

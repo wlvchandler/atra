@@ -1,4 +1,9 @@
 *~
+*.swp
+*.swo
+
+setup.log
+
 generated/
 venv/
 __pycache__/
@@ -9,17 +14,8 @@ __pycache__/
 dist/
 build/
 
-# Generated protobuf files
-atra-cli/atra_cli/generated/
 
-# IDEs
 .idea/
 .vscode/
-*.swp
-*.swo
-
-# OS
 .DS_Store
 Thumbs.db
-
-*.log
