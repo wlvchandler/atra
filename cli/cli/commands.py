@@ -4,8 +4,10 @@ from typing import List, Tuple, Dict
 import grpc
 
 from cli.cli.parser import create_parser
-from cli.orderbook.formatter import OrderBookFormatter
-from cli.orderbook.client import OrderBookClient
+
+from ..orderbook.formatter import OrderBookFormatter
+from ..orderbook.client import OrderBookClient
+
 
 def generate_order_id() -> int:
     return random.randint(1, 1000000)
