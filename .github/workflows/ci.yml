@@ -69,6 +69,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
 
       - name: Install Python dependencies and generate protos
+        shell: bash
         run: |
           cd cli
           python -m pip install --upgrade pip
@@ -85,12 +86,85 @@ jobs:
 
           echo "PYTHONPATH=$PWD" >> $GITHUB_ENV
 
-      - name: Build and start orderbook
+      - name: Install CLI as package
         run: |
-          docker build -t matcher -f atra-ob/Dockerfile .
-          docker compose up -d matcher
-          timeout 30s bash -c 'until docker compose ps | grep -q "healthy"; do sleep 1; done'
-
+          cd cli
+          pip install -e .
+          
+      - name: Prepare Docker Image Tags
+        id: prep_tags
+        shell: bash
+        run: |
+          GIT_COMMIT_SHA_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "Extracted GIT_COMMIT_SHA_SHORT: $GIT_COMMIT_SHA_SHORT"
+          echo "git_commit_sha_short=$GIT_COMMIT_SHA_SHORT" >> $GITHUB_OUTPUT
+          
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            RAW_BRANCH_NAME="${{ github.head_ref }}"
+          else
+            RAW_BRANCH_NAME="${{ github.ref_name }}"
+          fi
+          echo "Raw branch name: $RAW_BRANCH_NAME"
+          
+          SANITIZED_BRANCH_NAME=$(echo "$RAW_BRANCH_NAME" | sed 's/[^a-zA-Z0-9_.-]/-/g')
+          echo "Sanitized branch name: $SANITIZED_BRANCH_NAME"
+          echo "sanitized_branch_name=$SANITIZED_BRANCH_NAME" >> $GITHUB_OUTPUT
+          
+          FINAL_IMAGE_TAG="$SANITIZED_BRANCH_NAME-$GIT_COMMIT_SHA_SHORT"
+          echo "Final IMAGE_TAG: $FINAL_IMAGE_TAG"
+          echo "final_image_tag=$FINAL_IMAGE_TAG" >> $GITHUB_OUTPUT
+          
+      - name: Build and start orderbook
+        env:
+          GIT_COMMIT_SHA: ${{ steps.prep_tags.outputs.git_commit_sha_short }}
+          IMAGE_TAG: ${{ steps.prep_tags.outputs.final_image_tag }}
+        run: |
+            echo "--- Environment for Docker Compose ---"
+            echo "GIT_COMMIT_SHA (short): $GIT_COMMIT_SHA"
+            echo "IMAGE_TAG (branch-shortsha): $IMAGE_TAG"
+            echo "------------------------------------"
+            echo "Current directory: $(pwd)"
+            echo "Attempting to use docker-compose.yml"
+            
+            docker compose -f docker-compose.yml up -d --build matcher
+            
+            echo "Waiting for matcher service to be healthy..."
+            end_time=$((SECONDS + 75))
+            healthy="false"
+            
+            while [ $SECONDS -lt $end_time ]; do
+              container_id=$(docker compose -f docker-compose.yml ps -q matcher 2>/dev/null)
+            
+              if [ -z "$container_id" ]; then
+                echo -n ". (no container id for 'matcher' service yet) "
+                sleep 3
+                continue
+              fi
+            
+              container_id_to_check=$(echo "$container_id" | head -n 1)
+              health_status=$(docker inspect --format='{{.State.Health.Status}}' "$container_id_to_check" 2>/dev/null)
+            
+              if [ "$health_status" == "healthy" ]; then
+                echo 
+                echo "Matcher service container $container_id_to_check is healthy!"
+                healthy="true"
+                break
+                else
+                echo -n ". ($health_status for $container_id_to_check) "
+              fi
+              sleep 2
+            done
+            
+            if [ "$healthy" != "true" ]; then
+              echo
+              echo "Matcher service did not become healthy in time."
+              echo "--- Current Docker Compose PS (on timeout) ---"
+              docker compose -f docker-compose.yml ps
+              echo "--- Docker Compose Logs Matcher (on timeout) ---"
+              docker compose -f docker-compose.yml logs matcher
+             exit 1
+            fi
+            
       - name: Run integration tests
         env:
           atra_OB_HOST: localhost
@@ -102,5 +176,12 @@ jobs:
       - name: Show logs on failure
         if: failure()
         run: |
-          docker compose ps
-          docker compose logs matcher
+          echo "--- Docker Compose PS ---"
+            docker compose ps
+          echo "------"
+          echo "--- Docker Compose Logs Matcher ---"
+            docker compose logs matcher
+          echo "------"
+          echo "--- Docker Compose Logs CLI  ---"
+            docker compose logs cli
+          echo "------"

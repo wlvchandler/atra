@@ -2,7 +2,7 @@ import os
 import sys
 import subprocess
 from pathlib import Path
-from cli.platform import get_venv_paths
+from cli.atra_platform import get_venv_paths
 
 class VenvManager:
     @staticmethod

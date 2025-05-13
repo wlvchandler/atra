@@ -5,7 +5,7 @@ services:
       dockerfile: atra-ob/Dockerfile
       tags:
         - "atra/matcher:${IMAGE_TAG:-latest}"
-        - "atra/matcher:${GIT_COMMIT_SHA}"
+        - "atra/matcher:${GIT_COMMIT_SHA:-temp}"
         - "atra/matcher:latest" # for now.
     image: "atra/matcher:${IMAGE_TAG:-latest}"
     ports:
@@ -27,7 +27,7 @@ services:
       dockerfile: cli/Dockerfile
       tags:
         - "atra/cli:${IMAGE_TAG:-latest}"
-        - "atra/cli:${GIT_COMMIT_SHA}"
+        - "atra/cli:${GIT_COMMIT_SHA:-temp}"
         - "atra/cli:latest" # for now.
     image: "atra/cli:${IMAGE_TAG:-latest}"
     networks:

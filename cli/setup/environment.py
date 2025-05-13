@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 
 from cli.utils.venv_manager import VenvManager
-from cli.platform import configure_venv, setup_executable, print_next_steps
+from cli.atra_platform import configure_venv, setup_executable, print_next_steps
 
 cli_dir = Path(__file__).resolve().parent.parent
 log_file = cli_dir / 'setup.log'
