@@ -5,14 +5,14 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "atra-cli"
+name = "atra"
 version = "0.1.0"
 description = "Atra CLI"
 authors = [
     {name = "will chandler"}
 ]
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 license = {text = "Proprietary"}
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -28,7 +28,7 @@ dependencies = [
 ]
 
 [project.scripts]
-atra = "__main__:main"
+atra = "atra_cli_core.__main__:main"
 
 [project.optional-dependencies]
 dev = [
@@ -38,7 +38,13 @@ dev = [
 ]
 
 [tool.setuptools]
-packages = ["cli"]
+packages = ["" = "src"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+atra_cli_core = ["scripts/*.py", "atra_platform/env/*.py"]
 
 [tool.black]
 line-length = 100
