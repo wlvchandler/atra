@@ -2,13 +2,17 @@
 import sys
 from pathlib import Path
 
-script_dir = Path(__file__).resolve().parent
-parent_dir = script_dir.parent
+# script_dir = Path(__file__).resolve().parent
+# parent_dir = script_dir.parent
 
-if str(parent_dir) not in sys.path:
-    sys.path.insert(0, str(parent_dir))
+script_file_path = Path(__file__).resolve() # cli/atra
+cli_dir_path = script_file_path.parent # cli/
+src_dir_path = cli_dir_path / "src" # cli/src/
 
-from cli.__main__ import main
+if str(src_dir_path) not in sys.path:
+    sys.path.insert(0, str(src_dir_path))
+
+from atra_cli_core.__main__ import main
 
 if __name__ == "__main__":
     main()

@@ -9,13 +9,16 @@ on:
   pull_request:
     types: [opened, synchronize]
   workflow_dispatch:
+    
 env:
   CARGO_TERM_COLOR: always
+  
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        
       # MENG/CLOB
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -29,15 +32,17 @@ jobs:
         run: cd atra-ob && cargo build --verbose
       - name: Run Rust tests
         run: cd atra-ob && cargo test --verbose
+        
       # CLI
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
           cache: 'pip'
+          
       - name: Install Python dependencies
         run: |
-          cd atra-cli
+          cd cli
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip list
@@ -49,15 +54,26 @@ jobs:
           which pip
       - name: Run Python tests
         run: |
-          cd atra-cli
+          cd cli
           python -m pip install pytest
           python -m pytest tests/ -v
 
   integration:
-    needs: test
+    #needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Cache Docker layers
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
 
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
@@ -67,40 +83,128 @@ jobs:
 
       - name: Install Protobuf Compiler
         run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+        
+      - name: Install Pip
+        run:  python -m pip install --upgrade pip
+        
+      - name: Install atra cli
+        shell: bash
+        run: pip install -e cli
 
-      - name: Install Python dependencies and generate protos
+      - name: Create generated protobuf module
+        shell: bash
         run: |
-          cd atra-cli
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
+          cd cli/src/atra_cli_core
           mkdir -p generated
           python -m grpc_tools.protoc \
-            -I../atra-proto/proto \
+            -I../../../atra-proto/proto \
             --python_out=./generated \
             --grpc_python_out=./generated \
-            ../atra-proto/proto/orderbook.proto
-          sed -i 's/import orderbook_pb2/import generated.orderbook_pb2/' generated/orderbook_pb2_grpc.py
+            ../../../atra-proto/proto/orderbook.proto
+          sed -i 's/import orderbook_pb2/import atra_cli_core.generated.orderbook_pb2/' generated/orderbook_pb2_grpc.py
           touch generated/__init__.py
-
-          echo "PYTHONPATH=$PWD" >> $GITHUB_ENV
-
-      - name: Build and start orderbook
+          
+      - name: Prepare Docker Image Tags
+        id: prep_tags
+        shell: bash
         run: |
-          docker build -t matcher -f atra-ob/Dockerfile .
-          docker compose up -d matcher
-          timeout 30s bash -c 'until docker compose ps | grep -q "healthy"; do sleep 1; done'
+          GIT_COMMIT_SHA_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "Extracted GIT_COMMIT_SHA_SHORT: $GIT_COMMIT_SHA_SHORT"
+          echo "git_commit_sha_short=$GIT_COMMIT_SHA_SHORT" >> $GITHUB_OUTPUT
+          
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            RAW_BRANCH_NAME="${{ github.head_ref }}"
+          else
+            RAW_BRANCH_NAME="${{ github.ref_name }}"
+          fi
+          echo "Raw branch name: $RAW_BRANCH_NAME"
+          
+          SANITIZED_BRANCH_NAME=$(echo "$RAW_BRANCH_NAME" | sed 's/[^a-zA-Z0-9_.-]/-/g')
+          echo "Sanitized branch name: $SANITIZED_BRANCH_NAME"
+          echo "sanitized_branch_name=$SANITIZED_BRANCH_NAME" >> $GITHUB_OUTPUT
+          
+          FINAL_IMAGE_TAG="$SANITIZED_BRANCH_NAME-$GIT_COMMIT_SHA_SHORT"
+          echo "Final IMAGE_TAG: $FINAL_IMAGE_TAG"
+          echo "final_image_tag=$FINAL_IMAGE_TAG" >> $GITHUB_OUTPUT
 
+      - name: Build and export matcher
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: atra-ob/Dockerfile
+          push: false
+          load: true
+          tags: atra/matcher:latest
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+
+      # - name: Debug Python paths
+      #   run: |
+      #     echo "PYTHONPATH: $PYTHONPATH"
+      #     python -c "import sys; print(sys.path)"
+      #     python -c "import os; print(os.getcwd())"
+      #     find cli -name '*.py' | sort
+
+      - name: Start matcher service
+        run: |
+          docker run -d --name matcher -p 50051:50051 \
+            -e BIND_ADDRESS=0.0.0.0:50051 \
+            --health-cmd="nc -zv localhost 50051" \
+            --health-interval=5s \
+            --health-timeout=3s \
+            --health-retries=3 \
+            --health-start-period=5s \
+            atra/matcher:latest
+          
+          echo "Waiting for matcher service to be healthy..."
+          end_time=$((SECONDS + 75))
+          healthy="false"
+
+          while [ $SECONDS -lt $end_time ]; do
+            health_status=$(docker inspect --format='{{.State.Health.Status}}' matcher 2>/dev/null)
+
+            if [ "$health_status" == "healthy" ]; then
+              echo
+              echo "Matcher service container is healthy!"
+              healthy="true"
+              break
+            else
+              echo -n ". ($health_status) "
+            fi
+            sleep 2
+          done
+
+          if [ "$healthy" != "true" ]; then
+            echo
+            echo "Matcher service did not become healthy in time."
+            echo "--- Docker Logs ---"
+            docker logs matcher
+            exit 1
+          fi
+            
       - name: Run integration tests
         env:
           atra_OB_HOST: localhost
         run: |
-          cd atra-cli
+          cd cli
           chmod +x integration_tests.sh
           ./integration_tests.sh
 
       - name: Show logs on failure
         if: failure()
         run: |
-          docker compose ps
-          docker compose logs orderbook
+          echo "--- Docker Compose PS ---"
+            docker compose ps
+          echo "------"
+          echo "--- Docker Compose Logs Matcher ---"
+            docker compose logs matcher
+          echo "------"
+          echo "--- Docker Compose Logs CLI  ---"
+            docker compose logs cli
+          echo "------"
+          
+      - name: Move cache
+        if: "!cancelled()"
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache

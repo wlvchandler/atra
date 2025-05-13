@@ -9,30 +9,32 @@ def get_repo_root():
     return repo_dir
 
 def main():
-    from cli.utils.venv_manager import VenvManager
+    from atra_cli_core.utils.venv_manager import VenvManager
     
     repo_root = get_repo_root()
     args = sys.argv[1:]
 
     if args and args[0] == 'clean':
-        from cli.utils.cleanup import CleanupManager
+        from atra_cli_core.utils.cleanup import CleanupManager
         CleanupManager.clean_all()
         return
     
     if args and args[0] == 'init':
-        from cli.setup import environment
+        from atra_cli_core.setup_internals import environment
         environment.setup_environment()
         print("Environment setup complete. You can now run `atra` commands directly.")
         return
-        
-    if not VenvManager.is_venv_activated():
+
+    from atra_cli_core.setup_internals.environment import is_editable_install
+
+    if not (is_editable_install() or VenvManager.is_venv_activated()):
         if VenvManager.venv_exists():
             VenvManager.exec_in_venv(args)
         else:
             print("Virtual environment not found. Please run 'atra init' first.")
             sys.exit(1)
     else:
-        from cli.cli import commands
+        from atra_cli_core.utils import commands
         commands.run_cli(args)
 
 if __name__ == '__main__':

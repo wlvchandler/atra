@@ -3,10 +3,10 @@ import random
 from typing import List, Tuple, Dict
 import grpc
 
-from cli.cli.parser import create_parser
+from atra_cli_core.utils.parser import create_parser
 
-from ..orderbook.formatter import OrderBookFormatter
-from ..orderbook.client import OrderBookClient
+from atra_cli_core.orderbook.formatter import OrderBookFormatter
+from atra_cli_core.orderbook.client import OrderBookClient
 
 
 def generate_order_id() -> int:

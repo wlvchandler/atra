@@ -1,0 +1,36 @@
+#!/bin/bash
+
+if [ "$#" -ne 2 ]; then
+    echo "Usage: $0 <start_path> \"<extensions>\""
+    echo "Example: $0 . \"ex exs\""
+    exit 1
+fi
+
+START_PATH="$1"
+EXTENSIONS="$2"
+
+if [ ! -d "$START_PATH" ]; then
+    echo "Error: Start path '$START_PATH' not found or not a directory." >&2
+    exit 1
+fi
+
+FIND_ARGS=()
+FIRST_EXT=true
+for ext in $EXTENSIONS; do
+    if [ "$FIRST_EXT" = true ]; then
+        FIND_ARGS+=(-name "*.$ext")
+        FIRST_EXT=false
+    else
+        FIND_ARGS+=(-o -name "*.$ext")
+    fi
+done
+
+if [ ${#FIND_ARGS[@]} -eq 0 ]; then
+  echo "Error: No file extensions provided." >&2
+  exit 1
+fi
+
+find "$START_PATH" \
+  \( -path '*/.git' -o -path '*/build' \) -prune -o \
+  \( "${FIND_ARGS[@]}" \) -type f -print0 | \
+xargs -0 -I {} sh -c 'echo "####---- START {}"; cat "$1"; echo "####---- END {}"' sh {}
