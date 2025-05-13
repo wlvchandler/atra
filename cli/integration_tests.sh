@@ -1,5 +1,5 @@
 #!/bin/bash
-set -ex
+set -e
 
 # Colors for output
 GREEN='\033[0;32m'
