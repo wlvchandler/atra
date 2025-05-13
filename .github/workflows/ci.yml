@@ -103,10 +103,6 @@ jobs:
             ../../../atra-proto/proto/orderbook.proto
           sed -i 's/import orderbook_pb2/import atra_cli_core.generated.orderbook_pb2/' generated/orderbook_pb2_grpc.py
           touch generated/__init__.py
-
-      - name: Verify atra cli installation
-        shell: bash
-        run: atra book 9999
           
       - name: Prepare Docker Image Tags
         id: prep_tags
@@ -142,41 +138,13 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
 
-      - name: Debug Python paths
-        run: |
-          echo "PYTHONPATH: $PYTHONPATH"
-          python -c "import sys; print(sys.path)"
-          python -c "import os; print(os.getcwd())"
-          find cli -name '*.py' | sort
-
-      - name: Patch integration tests
-        run: |
-          cd cli
-          sed -i 's/atra /python -m cli /g' integration_tests.sh
-          
-      # - name: Install Python dependencies and generate protos
-      #   shell: bash
+      # - name: Debug Python paths
       #   run: |
-      #     cd cli
-      #     python -m pip install --upgrade pip
-      #     pip install -r requirements.txt
-      #     cd ..
-      #     pip install -e ./cli # install cli as a package
-      #     which atra
-      #     python -c "import cli; print(cli.__file__)"
-      #     cd cli
-      #     mkdir -p generated
-      #     python -m grpc_tools.protoc \
-      #       -I../atra-proto/proto \
-      #       --python_out=./generated \
-      #       --grpc_python_out=./generated \
-      #       ../atra-proto/proto/orderbook.proto
-      #     sed -i 's/import orderbook_pb2/import generated.orderbook_pb2/' generated/orderbook_pb2_grpc.py
-      #     touch generated/__init__.py
+      #     echo "PYTHONPATH: $PYTHONPATH"
+      #     python -c "import sys; print(sys.path)"
+      #     python -c "import os; print(os.getcwd())"
+      #     find cli -name '*.py' | sort
 
-      #     echo "PYTHONPATH=$PWD" >> $GITHUB_ENV
-      
-          
       - name: Start matcher service
         run: |
           docker run -d --name matcher -p 50051:50051 \
