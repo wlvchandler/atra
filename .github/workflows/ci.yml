@@ -19,21 +19,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         
-      # MENG/CLOB
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+        
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: atra-ob
+          
       - name: Install Protobuf Compiler
         run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+        
       - name: Build Rust
         run: cd atra-ob && cargo build --verbose
+        
       - name: Run Rust tests
         run: cd atra-ob && cargo test --verbose
         
-      # CLI
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
@@ -46,12 +48,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip list
+          
       - name: Verify Python environment
         run: |
           python --version
           pip --version
           which python
           which pip
+          
       - name: Run Python tests
         run: |
           cd cli
@@ -59,7 +63,7 @@ jobs:
           python -m pytest tests/ -v
 
   integration:
-    #needs: test
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -67,11 +71,16 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Compute Docker cache key
+        id: docker-cache-key
+        run: |
+          echo "cache_key=${{ runner.os }}-buildx-$(find atra-ob -type f -exec sha1sum {} \; | sha1sum | cut -d' ' -f1)" >> $GITHUB_OUTPUT
+
       - name: Cache Docker layers
         uses: actions/cache@v3
         with:
           path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          key: ${{ steps.docker-cache-key.outputs.cache_key }}
           restore-keys: |
             ${{ runner.os }}-buildx-
 
@@ -138,13 +147,6 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
 
-      # - name: Debug Python paths
-      #   run: |
-      #     echo "PYTHONPATH: $PYTHONPATH"
-      #     python -c "import sys; print(sys.path)"
-      #     python -c "import os; print(os.getcwd())"
-      #     find cli -name '*.py' | sort
-
       - name: Start matcher service
         run: |
           docker run -d --name matcher -p 50051:50051 \
@@ -208,3 +210,10 @@ jobs:
         run: |
           rm -rf /tmp/.buildx-cache
           mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+      - name: Save Docker cache
+        if: "!cancelled()"
+        uses: actions/cache/save@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ steps.docker-cache-key.outputs.cache_key }}
