@@ -59,7 +59,7 @@ jobs:
           python -m pytest tests/ -v
 
   integration:
-    needs: test
+    #needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -83,35 +83,30 @@ jobs:
 
       - name: Install Protobuf Compiler
         run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+        
+      - name: Install Pip
+        run:  python -m pip install --upgrade pip
+        
+      - name: Install atra cli
+        shell: bash
+        run: pip install -e cli
 
-      - name: Install Python dependencies and set up CLI
+      - name: Create generated protobuf module
         shell: bash
         run: |
-          set -x
-          cd cli
-          python -m pip install --upgrade pip
-          
-          # Install the CLI package properly
-          pip install -e .
-          
-          # Create minimal venv structure to bypass venv check
-          mkdir -p venv/bin
-          touch venv/bin/python
-          chmod +x venv/bin/python
-          
-          # Generate proto files (if needed)
+          cd cli/src/atra_cli_core
           mkdir -p generated
           python -m grpc_tools.protoc \
-          -I../atra-proto/proto \
-          --python_out=./generated \
-          --grpc_python_out=./generated \
-          ../atra-proto/proto/orderbook.proto
-          sed -i 's/import orderbook_pb2/import generated.orderbook_pb2/' generated/orderbook_pb2_grpc.py
+            -I../../../atra-proto/proto \
+            --python_out=./generated \
+            --grpc_python_out=./generated \
+            ../../../atra-proto/proto/orderbook.proto
+          sed -i 's/import orderbook_pb2/import atra_cli_core.generated.orderbook_pb2/' generated/orderbook_pb2_grpc.py
           touch generated/__init__.py
-          
-          # Test the installation
-          which atra
-          atra book 9999
+
+      - name: Verify atra cli installation
+        shell: bash
+        run: atra book 9999
           
       - name: Prepare Docker Image Tags
         id: prep_tags

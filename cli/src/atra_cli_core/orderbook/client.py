@@ -3,13 +3,13 @@ import grpc
 from decimal import Decimal
 from typing import Optional, Dict
 
-from ..generated.orderbook_pb2 import (
+from atra_cli_core.generated.orderbook_pb2 import (
     OrderRequest, GetOrderBookRequest, GetOrderStatusRequest,
     GetTradeHistoryRequest, Side, OrderType, CancelOrderRequest
 )
-from ..generated.orderbook_pb2_grpc import OrderBookServiceStub
+from atra_cli_core.generated.orderbook_pb2_grpc import OrderBookServiceStub
 
-from ..orderbook.formatter import OrderBookFormatter
+from atra_cli_core.orderbook.formatter import OrderBookFormatter
 
 class OrderBookClient:
     def __init__(self, formatter: OrderBookFormatter, use_docker: bool = False):
