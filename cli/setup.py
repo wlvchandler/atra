@@ -1,7 +1,10 @@
 from setuptools import setup, find_packages
 import os
 
-with open("cli/requirements.txt") as f:
+setup_dir = os.path.dirname(os.path.abspath(__file__))
+req_path = os.path.join(setup_dir, 'requirements.txt')
+
+with open(req_path) as f:
     requirements = [line.strip() for line in f if line.strip() and not line.startswith("#")]
 
 # this part is optional
