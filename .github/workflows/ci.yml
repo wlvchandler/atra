@@ -87,6 +87,7 @@ jobs:
       - name: Install Python dependencies and set up CLI
         shell: bash
         run: |
+          set -x
           cd cli
           python -m pip install --upgrade pip
           

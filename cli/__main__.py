@@ -32,7 +32,7 @@ def main():
             print("Virtual environment not found. Please run 'atra init' first.")
             sys.exit(1)
     else:
-        from cli.cli import commands
+        from cli.utils import commands
         commands.run_cli(args)
 
 if __name__ == '__main__':

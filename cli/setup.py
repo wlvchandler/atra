@@ -23,9 +23,10 @@ setup(
     packages=find_packages(),
     install_requires=requirements,
     python_requires=">=3.10",
+    py_modules=["__main__"],
     entry_points={
         'console_scripts': [
-            'atra=cli.__main__:main',
+            'atra=__main__:main',
         ],
     },
     classifiers=[

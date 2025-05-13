@@ -3,7 +3,7 @@ import random
 from typing import List, Tuple, Dict
 import grpc
 
-from cli.cli.parser import create_parser
+from .parser import create_parser
 
 from ..orderbook.formatter import OrderBookFormatter
 from ..orderbook.client import OrderBookClient
