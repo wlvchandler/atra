@@ -25,7 +25,7 @@ setup(
     python_requires=">=3.10",
     entry_points={
         'console_scripts': [
-            'atra=cli.__main__:main',
+            'atra=__main__:main',
         ],
     },
     classifiers=[

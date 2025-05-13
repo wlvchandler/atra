@@ -28,7 +28,7 @@ dependencies = [
 ]
 
 [project.scripts]
-atra = "cli.__main__:main"
+atra = "__main__:main"
 
 [project.optional-dependencies]
 dev = [
