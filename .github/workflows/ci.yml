@@ -9,13 +9,16 @@ on:
   pull_request:
     types: [opened, synchronize]
   workflow_dispatch:
+    
 env:
   CARGO_TERM_COLOR: always
+  
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        
       # MENG/CLOB
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -29,12 +32,14 @@ jobs:
         run: cd atra-ob && cargo build --verbose
       - name: Run Rust tests
         run: cd atra-ob && cargo test --verbose
+        
       # CLI
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
           cache: 'pip'
+          
       - name: Install Python dependencies
         run: |
           cd cli
@@ -59,6 +64,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Cache Docker layers
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
@@ -67,25 +83,6 @@ jobs:
 
       - name: Install Protobuf Compiler
         run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
-
-      - name: Install Python dependencies and generate protos
-        shell: bash
-        run: |
-          cd cli
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -e . # install cli as a package
-          which atra
-          mkdir -p generated
-          python -m grpc_tools.protoc \
-            -I../atra-proto/proto \
-            --python_out=./generated \
-            --grpc_python_out=./generated \
-            ../atra-proto/proto/orderbook.proto
-          sed -i 's/import orderbook_pb2/import generated.orderbook_pb2/' generated/orderbook_pb2_grpc.py
-          touch generated/__init__.py
-
-          echo "PYTHONPATH=$PWD" >> $GITHUB_ENV
           
       - name: Prepare Docker Image Tags
         id: prep_tags
@@ -109,57 +106,73 @@ jobs:
           FINAL_IMAGE_TAG="$SANITIZED_BRANCH_NAME-$GIT_COMMIT_SHA_SHORT"
           echo "Final IMAGE_TAG: $FINAL_IMAGE_TAG"
           echo "final_image_tag=$FINAL_IMAGE_TAG" >> $GITHUB_OUTPUT
-          
-      - name: Build and start orderbook
-        env:
-          GIT_COMMIT_SHA: ${{ steps.prep_tags.outputs.git_commit_sha_short }}
-          IMAGE_TAG: ${{ steps.prep_tags.outputs.final_image_tag }}
+
+      - name: Build and export matcher
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: atra-ob/Dockerfile
+          push: false
+          load: true
+          tags: atra/matcher:latest
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+
+      - name: Install Python dependencies and generate protos
+        shell: bash
         run: |
-            echo "--- Environment for Docker Compose ---"
-            echo "GIT_COMMIT_SHA (short): $GIT_COMMIT_SHA"
-            echo "IMAGE_TAG (branch-shortsha): $IMAGE_TAG"
-            echo "------------------------------------"
-            echo "Current directory: $(pwd)"
-            echo "Attempting to use docker-compose.yml"
-            
-            docker compose -f docker-compose.yml up -d --build matcher
-            
-            echo "Waiting for matcher service to be healthy..."
-            end_time=$((SECONDS + 75))
-            healthy="false"
-            
-            while [ $SECONDS -lt $end_time ]; do
-              container_id=$(docker compose -f docker-compose.yml ps -q matcher 2>/dev/null)
-            
-              if [ -z "$container_id" ]; then
-                echo -n ". (no container id for 'matcher' service yet) "
-                sleep 3
-                continue
-              fi
-            
-              container_id_to_check=$(echo "$container_id" | head -n 1)
-              health_status=$(docker inspect --format='{{.State.Health.Status}}' "$container_id_to_check" 2>/dev/null)
-            
-              if [ "$health_status" == "healthy" ]; then
-                echo 
-                echo "Matcher service container $container_id_to_check is healthy!"
-                healthy="true"
-                break
-                else
-                echo -n ". ($health_status for $container_id_to_check) "
-              fi
-              sleep 2
-            done
-            
-            if [ "$healthy" != "true" ]; then
+          cd cli
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e . # install cli as a package
+          which atra
+          mkdir -p generated
+          python -m grpc_tools.protoc \
+            -I../atra-proto/proto \
+            --python_out=./generated \
+            --grpc_python_out=./generated \
+            ../atra-proto/proto/orderbook.proto
+          sed -i 's/import orderbook_pb2/import generated.orderbook_pb2/' generated/orderbook_pb2_grpc.py
+          touch generated/__init__.py
+
+          echo "PYTHONPATH=$PWD" >> $GITHUB_ENV
+
+      - name: Start matcher service
+        run: |
+          docker run -d --name matcher -p 50051:50051 \
+            -e BIND_ADDRESS=0.0.0.0:50051 \
+            --health-cmd="nc -zv localhost 50051" \
+            --health-interval=5s \
+            --health-timeout=3s \
+            --health-retries=3 \
+            --health-start-period=5s \
+            atra/matcher:latest
+          
+          echo "Waiting for matcher service to be healthy..."
+          end_time=$((SECONDS + 75))
+          healthy="false"
+
+          while [ $SECONDS -lt $end_time ]; do
+            health_status=$(docker inspect --format='{{.State.Health.Status}}' matcher 2>/dev/null)
+
+            if [ "$health_status" == "healthy" ]; then
               echo
-              echo "Matcher service did not become healthy in time."
-              echo "--- Current Docker Compose PS (on timeout) ---"
-              docker compose -f docker-compose.yml ps
-              echo "--- Docker Compose Logs Matcher (on timeout) ---"
-              docker compose -f docker-compose.yml logs matcher
-             exit 1
+              echo "Matcher service container is healthy!"
+              healthy="true"
+              break
+            else
+              echo -n ". ($health_status) "
             fi
+            sleep 2
+          done
+
+          if [ "$healthy" != "true" ]; then
+            echo
+            echo "Matcher service did not become healthy in time."
+            echo "--- Docker Logs ---"
+            docker logs matcher
+            exit 1
+          fi
             
       - name: Run integration tests
         env:
@@ -181,3 +194,8 @@ jobs:
           echo "--- Docker Compose Logs CLI  ---"
             docker compose logs cli
           echo "------"
+          
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache

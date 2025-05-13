@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -ex
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -17,7 +17,7 @@ verify_trade_sequence() {
 
     # Get initial trades for comparison
     local initial_trade
-    initial_trade=$(./atra trades 1)
+    initial_trade=$(atra trades 1)
 
     # Execute the order
     echo "Executing order: $order_cmd"
@@ -30,7 +30,7 @@ verify_trade_sequence() {
 
     # Get recent trades
     local trades
-    trades=$(./atra trades "$((num_expected + 1))")
+    trades=$(atra trades "$((num_expected + 1))")
     echo "Recent trades:"
     echo "$trades"
 
@@ -96,21 +96,23 @@ verify_trade_sequence() {
 clear_book() {
     echo "Clearing order book..."
     # Match any existing orders by placing aggressive orders
-    book_data=$(./atra book 9999)
+    echo "atra book 9999"
+    atra book 9999
+    book_data=$(atra book 9999)
     while IFS=',' read -r type side price quantity; do
         if [[ "$type" == "level" ]]; then
             if [[ "$side" == "ask" ]]; then
-                ./atra buy "$quantity@$price"
+                atra buy "$quantity@$price"
             else
-                ./atra sell "$quantity@$price"
+                atra sell "$quantity@$price"
             fi
         fi
     done <<< "$book_data"
 
     # Verify book is clear
-    if [[ -n $(./atra book 10) ]]; then
+    if [[ -n $(atra book 10) ]]; then
         echo "Warning: Order book not fully cleared"
-        ./atra book 10
+        atra book 10
     else
         echo "Order book cleared successfully"
     fi
@@ -119,7 +121,7 @@ clear_book() {
 # Function to display order book
 show_book() {
     echo -e "${YELLOW}Current order book:${NC}"
-    ./atra book 10
+    atra book 10
 }
 
 echo -e "${BLUE}Starting matching tests...${NC}"
@@ -132,9 +134,9 @@ clear_book
 # Test 1.1: Basic match at same price
 echo -e "\n${YELLOW}Test 1.1: Basic match at same price${NC}"
 echo "Placing sell order..."
-./atra sell 10@100
+atra sell 10@100
 show_book
-verify_trade_sequence "./atra buy 10@100" \
+verify_trade_sequence "atra buy 10@100" \
     "10" "100" "bid"
 show_book
 
@@ -143,9 +145,9 @@ clear_book
 # Test 1.2: Partial match
 echo -e "\n${YELLOW}Test 1.2: Partial match${NC}"
 echo "Placing sell order..."
-./atra sell 20@101
+atra sell 20@101
 show_book
-verify_trade_sequence "./atra buy 10@101" \
+verify_trade_sequence "atra buy 10@101" \
     "10" "101" "bid"
 show_book
 
@@ -157,11 +159,11 @@ clear_book
 # Test 2.1: Buy price improvement - verify trades in reverse order
 echo -e "\n${YELLOW}Test 2.1: Buy price improvement${NC}"
 echo "Building fresh order book..."
-./atra sell 5@102
-./atra sell 5@103
-./atra sell 5@104
+atra sell 5@102
+atra sell 5@103
+atra sell 5@104
 show_book
-verify_trade_sequence "./atra buy 15@104" \
+verify_trade_sequence "atra buy 15@104" \
     "5" "104" "bid" \
     "5" "103" "bid" \
     "5" "102" "bid"
@@ -172,10 +174,10 @@ clear_book
 # Test 2.2: Multiple fills at same price
 echo -e "\n${YELLOW}Test 2.2: Multiple fills at same price${NC}"
 echo "Building order book..."
-./atra sell 5@105
-./atra sell 5@105
+atra sell 5@105
+atra sell 5@105
 show_book
-verify_trade_sequence "./atra buy 10@105" \
+verify_trade_sequence "atra buy 10@105" \
     "5" "105" "bid" \
     "5" "105" "bid"
 show_book
@@ -188,9 +190,9 @@ clear_book
 # Test 3.1: Single unit trades
 echo -e "\n${YELLOW}Test 3.1: Single unit trades${NC}"
 echo "Testing minimum quantity..."
-./atra sell 1@106
+atra sell 1@106
 show_book
-verify_trade_sequence "./atra buy 1@106" \
+verify_trade_sequence "atra buy 1@106" \
     "1" "106" "bid"
 show_book
 
