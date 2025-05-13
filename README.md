@@ -2,7 +2,7 @@
 
 
 [![forthebadge](https://forthebadge.com/images/badges/powered-by-electricity.svg)](https://forthebadge.com)
-[![CI/CD](https://github.com/wlvchandler/atra/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/wlvchandler/atra/actions/workflows/ci.yml)
+[![CI/CD](https://github.com/wlvchandler/atra/actions/workflows/ci.yml/badge.svg)](https://github.com/wlvchandler/atra/actions/workflows/ci.yml)
 
 ## Components
 
