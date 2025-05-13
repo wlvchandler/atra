@@ -118,14 +118,24 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
 
+      - name: Debug Python paths
+        run: |
+          echo "PYTHONPATH: $PYTHONPATH"
+          python -c "import sys; print(sys.path)"
+          python -c "import os; print(os.getcwd())"
+          find cli -name '*.py' | sort
+    
       - name: Install Python dependencies and generate protos
         shell: bash
         run: |
           cd cli
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install -e . # install cli as a package
+          cd ..
+          pip install -e ./cli # install cli as a package
           which atra
+          python -c "import cli; print(cli.__file__)"
+          cd cli
           mkdir -p generated
           python -m grpc_tools.protoc \
             -I../atra-proto/proto \
