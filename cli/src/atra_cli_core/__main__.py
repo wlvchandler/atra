@@ -24,8 +24,10 @@ def main():
         environment.setup_environment()
         print("Environment setup complete. You can now run `atra` commands directly.")
         return
-        
-    if not VenvManager.is_venv_activated():
+
+    from atra_cli_core.setup_internals.environment import is_editable_install
+
+    if not (is_editable_install() or VenvManager.is_venv_activated()):
         if VenvManager.venv_exists():
             VenvManager.exec_in_venv(args)
         else:

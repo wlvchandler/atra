@@ -2,6 +2,8 @@ import os
 import sys
 import subprocess
 import logging
+import site
+import glob
 from pathlib import Path
 import importlib.resources
 
@@ -48,6 +50,27 @@ class ColoredOutput:
     def bold(msg):
         return f"{ColoredOutput.BOLD}{msg}{ColoredOutput.ENDC}"
 
+# determine if we're installed via pip or not
+def is_editable_install():
+    site_packages = site.getsitepackages()
+    user_site = site.getusersitepackages()
+    site_packages.append(user_site)
+    
+    for path in site_packages:
+        if not os.path.exists(path):
+            continue
+        
+        pth_pattern = os.path.join(path, f"__editable__.atra-*.pth")
+        if glob.glob(pth_pattern):
+            return True
+            
+        # backward compatibility - non pep660
+        egg_link = os.path.join(path, f"atra.egg-link")
+        if os.path.isfile(egg_link):
+            return True
+    
+    return False
+
 def run_command(cmd, check=True, env=None, capture_output=True):
     cmd_str = " ".join(str(x) for x in cmd)
     logging.debug(f"Running command: {cmd_str}")
@@ -61,7 +84,6 @@ def run_command(cmd, check=True, env=None, capture_output=True):
         if e.output:
             logging.debug(e.output)
         return False
-
     
 def create_virtual_environment():
     venv_dir = VenvManager.get_venv_dir()
@@ -133,17 +155,20 @@ def setup_environment():
     print(ColoredOutput.info(f"CLI directory: {cli_dir}"))
     if repo_root:
         print(ColoredOutput.info(f"Repository root: {repo_root}"))
-    
-    steps = [
-        (create_virtual_environment, None),
-        (configure_venv_with_help, None),
-        (lambda: print(ColoredOutput.info("\n📥 Installing requirements...")) or True, None), 
-        (VenvManager.install_requirements, "✓ Dependencies installed"),
-        (generate_proto_files, None),
-        (ensure_script_executable, None)
-    ]
+
+    steps = []
+    if not is_editable_install():
+        steps += [
+            (create_virtual_environment, None),
+            (configure_venv_with_help, None),
+            (lambda: print(ColoredOutput.info("\n📥 Installing requirements...")) or True, None), 
+            (VenvManager.install_requirements, "✓ Dependencies installed")
+        ]
+
+    steps += [(generate_proto_files, None),  (ensure_script_executable, None)]
     
     for step_func, success_msg in steps:
+        logging.debug(f"Running step {step_func.__name__}")
         result = step_func()
         if success_msg and result:
             print(ColoredOutput.success(success_msg))
