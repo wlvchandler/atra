@@ -8,7 +8,7 @@ parent_dir = script_dir.parent
 if str(parent_dir) not in sys.path:
     sys.path.insert(0, str(parent_dir))
 
-from __main__ import main
+from cli.__main__ import main
 
 if __name__ == "__main__":
     main()

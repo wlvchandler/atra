@@ -206,6 +206,7 @@ jobs:
           echo "------"
           
       - name: Move cache
+        if: "!cancelled()"
         run: |
           rm -rf /tmp/.buildx-cache
           mv /tmp/.buildx-cache-new /tmp/.buildx-cache
