@@ -20,6 +20,21 @@ services:
       timeout: 5s
       retries: 5
       start_period: 5s
+      
+  gateway:
+    build:
+      context: .
+      dockerfile: atra-gateway/Dockerfile
+      tags:
+        - "atra/gateway:${IMAGE_TAG:-latest}"
+        - "atra/gateway:${GIT_COMMIT_SHA}"
+        - "atra/gateway:latest"
+    image: "atra/gateway:${IMAGE_TAG:-latest}"
+    environment:
+      - MATCHER_HOST=matcher
+      - MATCHER_PORT=50051
+    networks:
+      - atra-net
   
   cli:
     build:
@@ -32,9 +47,6 @@ services:
     image: "atra/cli:${IMAGE_TAG:-latest}"
     networks:
       - atra-net
-    depends_on:
-      matcher:
-        condition: service_healthy
 
 networks:
   atra-net:
