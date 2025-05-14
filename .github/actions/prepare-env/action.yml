@@ -1,0 +1,83 @@
+name: 'Prepare Environment and Build Artifacts'
+description: 'Installs dependencies, builds Rust, generates protos, and uploads all necessary artifacts.'
+outputs:
+  uploaded-proto-artifact-name:
+    description: 'The name used for the uploaded protobuf artifact (e.g., "generated-proto").'
+  uploaded-rust-artifact-name:
+    description: 'The name used for the uploaded Rust build artifact (e.g., "rust-build").'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install system dependencies
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y protobuf-compiler
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10' # make as an input?
+        cache: 'pip'
+        
+    - name: Install Python dependencies
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install grpcio-tools
+        # Assuming 'cli' is a directory in the root of the calling repository
+        cd cli
+        pip install -r requirements.txt
+        pip install pytest
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      
+    - name: Cache Rust dependencies
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: atra-ob
+
+    - name: Build Rust project
+      shell: bash
+      run: cd atra-ob && cargo build --verbose
+
+    - name: Generate protobuf modules
+      shell: bash
+      run: |
+        mkdir -p ${{ github.workspace }}/generated_proto
+        cd ${{ github.workspace }}/generated_proto
+        python -m grpc_tools.protoc \
+          -I../../atra-proto/proto \
+          --python_out=. \
+          --grpc_python_out=. \
+          ../../atra-proto/proto/orderbook.proto
+        sed -i 's/import orderbook_pb2/import atra_cli_core.generated.orderbook_pb2/' orderbook_pb2_grpc.py
+        touch __init__.py
+        cd ${{ github.workspace }}
+
+    - name: Upload proto artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: generated-proto 
+        path: ${{ github.workspace }}/generated_proto/
+        retention-days: 1
+
+    - name: Upload Rust build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: rust-build 
+        path: |
+          ${{ github.workspace }}/atra-ob/target/
+          !${{ github.workspace }}/atra-ob/target/debug/incremental/
+        retention-days: 1
+
+    - name: Set artifact name outputs
+      shell: bash
+      run: |
+        echo "uploaded-proto-artifact-name=generated-proto" >> $GITHUB_OUTPUT
+        echo "uploaded-rust-artifact-name=rust-build" >> $GITHUB_OUTPUT        
