@@ -30,11 +30,20 @@ services:
         - "atra/gateway:${GIT_COMMIT_SHA}"
         - "atra/gateway:latest"
     image: "atra/gateway:${IMAGE_TAG:-latest}"
+    ports:
+      - "50052:50052"
     environment:
       - MATCHER_HOST=matcher
       - MATCHER_PORT=50051
+      - GATEWAY_PORT=50052
     networks:
       - atra-net
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "50052"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
   
   cli:
     build:
@@ -45,6 +54,9 @@ services:
         - "atra/cli:${GIT_COMMIT_SHA:-temp}"
         - "atra/cli:latest" # for now.
     image: "atra/cli:${IMAGE_TAG:-latest}"
+    environment:
+      - atra_OB_HOST=gateway
+      - atra_OB_PORT=50052 
     networks:
       - atra-net
 

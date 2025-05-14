@@ -25,10 +25,10 @@ class OrderBookClient:
 
     def _connect(self):
         if self.use_docker:
-            host = 'orderbook'
+            host = 'gateway'
         else:
             host = os.getenv('atra_OB_HOST', '127.0.0.1')
-        port = os.getenv('atra_OB_PORT', '50051')
+        port = os.getenv('atra_OB_PORT', '50052')
         channel = grpc.insecure_channel(f'{host}:{port}')
         return OrderBookServiceStub(channel)
 
