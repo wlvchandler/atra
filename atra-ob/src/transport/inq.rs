@@ -68,8 +68,9 @@ impl InstrumentQueue {
 
 	Ok(Self {
 	    mapped,
-	    header_offset, data_offset,
-	    slot_size,
+	    header_offset: 0,
+	    data_offset: header_size,
+	    slot_size: aligned_slot_size,
 	    _phantom: PhantomData,
 	})
     }
@@ -81,7 +82,7 @@ impl InstrumentQueue {
 	    .write(true)
 	    .open(&path)?;
 	let file_size = file.metadata()?.len() as usize;
-	let header_size = std::mem::size_of<InqHeader>();
+	let header_size = std::mem::size_of::<InqHeader>();
 	if file_size <= header_size {
             return Err(Error::new(ErrorKind::InvalidData, "Invalid INQ file size"));
         }
@@ -90,12 +91,12 @@ impl InstrumentQueue {
         let slot_size = std::mem::size_of::<Order>();
         let aligned_slot_size = (slot_size + 7) & !7;
         let slot_count = (file_size - header_size) / aligned_slot_size;
-        
         Ok(Self {
-            mapped,instrument_id, slot_count,
-            slot_size: aligned_slot_size,
+            mapped,
             header_offset: 0,
-            data_offset: header_size,
+	    data_offset: header_size,
+            slot_size: aligned_slot_size,
+            _phantom: PhantomData,
         })
     }
 
