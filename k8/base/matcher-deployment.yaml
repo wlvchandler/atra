@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: matcher
+  namespace: atra
+
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: matcher
+  template:
+    metadata:
+      labels:
+        app: matcher
+    spec:
+      containers:
+      - name: matcher
+        image: willvchandler/atra-matcher:latest
+        ports:
+        - containerPort: 50051
+        env:
+        - name: BIND_ADDRESS
+          value: "0.0.0.0:50051"
