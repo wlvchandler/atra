@@ -41,7 +41,32 @@ pub struct InstrumentQueue {
 
 impl InstrumentQueue {
     pub fn new(instrument: InstrumentId, capacity: usize) -> Result<Self> {
-	// ...
+	let slot_size = std::mem::size_of::<Order>();
+	let aligned_slot_size = (slot_size + 7) & !7; // 8 byte alignment
+	let header_size = std::mem::size_of::<InqHeader>();
+	let total_size = header_size + (aligned_slot_size * capacity);
+
+	let path = format!("/dev/shm/inq_{}", instrument_id);
+	let file = Self::create_and_size_file(&path, total_size as u64)?;
+	let mapped = unsafe { MmapOptions::new().map_mut(&file)?);
+
+	unsafe {
+	    let header = mapped.as_ptr() as *mut InqHeader;
+	    (*header).write_idx = AtomicU64::new(0);
+	    (*header).read_idx = AtomicU64::new(0);
+	    (*header).created_at = std::time::SystemTime::now()
+		.duration_since(std::time::UNIX_EPOCH)
+		.unwrap()
+		.as_nanos() as u64;
+	}
+
+	Ok(Self {
+	    mapped, instrument_id,
+	    slot_count: capacity,
+	    slot_size: aligned_slot_size,
+	    header_offset: 0,
+	    data_offset: header_size,
+	})
     }
 
     pub fn write(&self, order: &Order) -> Result<()> {
