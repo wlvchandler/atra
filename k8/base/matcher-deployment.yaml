@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: matcher
+  namespace: atra
+  
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: matcher
+  template:
+    metadata:
+      labels:
+        app: matcher
+    spec:
+      containers:
+      - name: matcher
+        image: willvchandler/atra-matcher:latest
+        ports:
+        - containerPort: 50051
+        env:
+        - name: BIND_ADDRESS
+          value: "0.0.0.0:50051"
+        readinessProbe:
+          exec:
+            command: ["nc", "-z", "localhost", "50051"]
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          exec:
+            command: ["nc", "-z", "localhost", "50051"]
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
