@@ -1,0 +1,63 @@
+name: Generate Kubernetes Manifests
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'helm/**'
+  pull_request:
+    paths:
+      - 'helm/**'
+  workflow_dispatch:
+
+jobs:
+  generate-manifests:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Set up Helm
+      uses: azure/setup-helm@v3
+      with:
+        version: 'latest'
+    
+    - name: Generate manifests for each environment
+      run: |
+        mkdir -p k8/base
+        mkdir -p k8/overlays/dev
+        mkdir -p k8/overlays/prod
+        
+        helm template atra ./helm/atra > k8/base/all-resources.yaml
+        if [ -f ./helm/atra/values-dev.yaml ]; then
+          helm template atra ./helm/atra -f ./helm/atra/values-dev.yaml > k8/overlays/dev/all-resources.yaml
+        fi
+        if [ -f ./helm/atra/values-prod.yaml ]; then
+          helm template atra ./helm/atra -f ./helm/atra/values-prod.yaml > k8/overlays/prod/all-resources.yaml
+        fi
+        
+        cat > k8/README.md << 'EOF'
+        # Auto-Generated Kubernetes Manifests
+        **DO NOT EDIT THESE FILES DIRECTLY** as your changes will be overwritten.
+        These files are automatically generated.
+        To make changes, modify the Helm charts and values files in the `helm/` directory instead.
+        Last generated: $(date)
+        EOF
+    
+    - name: Check for changes
+      id: check-changes
+      run: |
+        git diff --quiet k8/ || echo "changes=true" >> $GITHUB_OUTPUT
+    
+    - name: Commit changes if needed
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "Atramentar"
+        git add k8/
+        git diff --staged --quiet || (
+          BRANCH_NAME=$(echo $GITHUB_REF | sed 's!refs/heads/!!')      
+          git commit -m "Auto-generate Kubernetes manifests from Helm charts [skip ci]"
+          git push origin HEAD:$BRANCH_NAME
+        )
