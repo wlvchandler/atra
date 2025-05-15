@@ -1,0 +1,13 @@
+namespace: atra
+
+images:
+  registry: willvchandler
+  tag: latest
+
+matcher:
+  replicas: 1
+  port: 50051
+
+gateway:
+  replicas: 2
+  port: 50052

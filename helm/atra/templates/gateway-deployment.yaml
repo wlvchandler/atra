@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.gateway.replicas }}
+  selector:
+    matchLabels:
+      app: gateway
+  template:
+    metadata:
+      labels:
+        app: gateway
+    spec:
+      containers:
+      - name: gateway
+        image: {{ .Values.images.registry }}/atra-gateway:{{ .Values.images.tag }}
+        ports:
+        - containerPort: {{ .Values.gateway.port }}
+        env:
+        - name: MATCHER_HOST
+          value: "matcher"
+        - name: MATCHER_PORT
+          value: "{{ .Values.matcher.port }}"
+        - name: GATEWAY_PORT
+          value: "{{ .Values.gateway.port }}"
