@@ -2,7 +2,9 @@ FROM elixir:1.15-alpine
 
 WORKDIR /app
 
-RUN apk add --no-cache build-base git protoc protobuf protobuf-dev netcat-openbsd
+RUN apk update && apk add --no-cache build-base git protoc protobuf protobuf-dev netcat-openbsd bash
+RUN apk update && apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/testing grpcurl
+
 RUN mix local.hex --force && mix local.rebar --force
 
 COPY atra-gateway/mix.exs atra-gateway/mix.lock ./

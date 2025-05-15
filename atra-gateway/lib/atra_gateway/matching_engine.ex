@@ -2,11 +2,11 @@ defmodule AtraGateway.MatchingEngine do
   use GenServer
   require Logger
   alias AtraGateway.Orders
-
+  
   def start_link(_) do
     GenServer.start_link(__MODULE__, nil, name: __MODULE__)
   end
-
+  
   def init(_) do
     :ets.new(:order_buffer, [:named_table, :public, write_concurrency: true])
     schedule_batch_processing()
@@ -53,14 +53,12 @@ defmodule AtraGateway.MatchingEngine do
           price: to_string(params.price),
           quantity: to_string(params.quantity),
           side: proto_side(params.side),
-          order_type: proto_order_type(params.type)
-}
-      end)
-
+          order_type: proto_order_type(params.type)} end)
+      
       request = %Orderbook.OrderBatchRequest{
 	orders: proto_requests
       }
-
+      
       case Orderbook.OrderBookService.Stub.place_orders(channel, request) do
 	{:ok, %Orderbook.OrderBatchResponse{orders: responses}} ->
           Enum.map(responses, &Orders.from_proto/1)

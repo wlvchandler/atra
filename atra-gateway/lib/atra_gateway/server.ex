@@ -2,11 +2,18 @@ defmodule AtraGateway.Server do
   use GRPC.Server, service: Orderbook.OrderBookService.Service
   require Logger
 
+  defp parse_numeric(str) do
+    case Float.parse(str) do
+      {float, _} -> float
+      :error -> raise ArgumentError, "Invalid numeric format: #{inspect(str)}"
+    end
+  end
+  
   def place_order(request, _stream) do
     Logger.info("atra.gateway.request.place_order id:#{inspect(request.id)}")
     case AtraGateway.MatchingEngine.place_order(AtraGateway.Orders.new(
-      String.to_float(request.price),
-      String.to_float(request.quantity),
+      parse_numeric(request.price),
+      parse_numeric(request.quantity),
       atom_from_proto_side(request.side),
       atom_from_proto_order_type(request.order_type)
     )) do
@@ -99,3 +106,4 @@ defmodule AtraGateway.Server do
   defp atom_from_proto_order_type(:LIMIT), do: :limit
   defp atom_from_proto_order_type(:MARKET), do: :market
 end
+

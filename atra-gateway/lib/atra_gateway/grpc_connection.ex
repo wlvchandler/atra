@@ -9,16 +9,17 @@ defmodule AtraGateway.GrpcConnection do
   def init(_) do
     matcher_host = System.get_env("MATCHER_HOST", "localhost")
     matcher_port = System.get_env("MATCHER_PORT", "50051")
-
     connection_string = "#{matcher_host}:#{matcher_port}"
+    
     Logger.info("Connecting to matcher at #{connection_string}")
     
-    case GRPC.Stub.connect(connection_string, pool_size: 1) do
+    case GRPC.Stub.connect(connection_string) do
       {:ok, channel} ->
         Logger.info("Connected to matching engine")
         {:ok, %{channel: channel}}
       {:error, reason} ->
         Logger.error("Failed to connect to matching engine: #{inspect(reason)}")
+        # fail fast if connection fails
         {:stop, reason}
     end
   end
