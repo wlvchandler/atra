@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: matcher
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.matcher.replicas }}
+  selector:
+    matchLabels:
+      app: matcher
+  template:
+    metadata:
+      labels:
+        app: matcher
+    spec:
+      containers:
+      - name: matcher
+        image: {{ .Values.images.registry }}/atra-matcher:{{ .Values.images.tag }}
+        ports:
+        - containerPort: {{ .Values.matcher.port }}
+        env:
+        - name: BIND_ADDRESS
+          value: "0.0.0.0:{{ .Values.matcher.port }}"
