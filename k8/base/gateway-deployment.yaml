@@ -3,6 +3,7 @@ kind: Deployment
 metadata:
   name: gateway
   namespace: atra
+
 spec:
   replicas: 2
   selector:
@@ -25,3 +26,20 @@ spec:
           value: "50051"
         - name: GATEWAY_PORT
           value: "50052"
+        readinessProbe:
+          exec:
+            command: ["nc", "-z", "localhost", "50052"]
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          exec:
+            command: ["nc", "-z", "localhost", "50052"]
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
