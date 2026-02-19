@@ -1,6 +1,8 @@
 ### Is your design deterministic, if not why did you choose that design? How do you think about determinism, what adjustments you would make? 
 
-No. The matching algorithm itself is deterministic given the same input sequence by the system around it is non-dereministic because of wall-clock timestamps in a couple places. This wasn't a "final" design decision, rather a p0 MVP decision.  
+No. The matching algorithm itself is deterministic given the same input sequence by the system around it is non-dereministic because of wall-clock timestamps in a couple places. This wasn't a "final" design decision, rather a p0 MVP decision.
+
+There are cases where non determinism can be used (or at least where it's defensible) e.g. some places use it to prevent queue gaming and MM fairness for RFQ systems (like: some venues intentionally randomize which MM gets "last look" under certain conditoins to prevent bad faith frontrunning) but to be clear - if this were heading to production, I would NOT deploy until determinism was guaranteed. Those special cases are like, explicit product features, not side effects of MVP naive implementations.
 
 Specific locations are in `Order::new()` (timestamp is used as a naive tiebreaker for `Order::Ord` which means PTP across equal price orders is technically tied to when the code happened to run rather than a stable input ordering) and in the Elixir gateway for similar reasons: (not as immediately obvious but `MatchingEngine` pulls orders from ETS and sorts by `monotonic_time()`, then fans out chunks to async tasks... those chunks hit the Rust engine thru the grpc pool in whatever order the tasks happen to complete).
 
