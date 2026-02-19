@@ -41,3 +41,5 @@ gRPC request -> `place_order()` -> `match_order()` -> [price level walk + fills]
 Fortunately most of this is cleanup + overhead removal from MVP state since the matching algorithm logic itself & the PTP semantics are right. 
 
 > (PS: Rust is interesting but I am not convinced it's is the best choice for a high performance engine. The ownership model eliminates a class of bugs but I haven't yet seen it outperform C++ (where a well-designed memory pool/slab allocator like openACR erases ownership leaks anyways). Happy to dig into that conversation)
+
+Open issues tracking the above and other known gaps are on https://github.com/wlvchandler/atra/issues
