@@ -62,6 +62,16 @@ cargo nextest run
 cargo run --bin server
 ```
 
+Deterministic sequencing flags:
+
+```bash
+# number of stable processing lanes (parallel across lanes, serial in-lane)
+export ATRA_LANE_COUNT=4
+
+# strict sequence gate: reject stale/gap/out-of-order sequence numbers
+export ATRA_STRICT_SEQUENCE_VALIDATION=true
+```
+
 ### CLI (Python)
 ```bash
 cd atra-cli
@@ -75,6 +85,13 @@ cd atra_gateway
 mix deps.get
 mix compile
 iex -S mix
+```
+
+Gateway deterministic ingress flags:
+
+```bash
+export ATRA_GATEWAY_LANE_COUNT=4
+export ATRA_GATEWAY_STRICT_SEQUENCE_VALIDATION=true
 ```
 
 ## Project Structure

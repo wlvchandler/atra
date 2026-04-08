@@ -4,7 +4,7 @@ use atra_ob::core::{OrderBook, Order, Side, OrderType, OrderStatus, MatchingEngi
 
 
 fn create_test_order(id: u64, price: rust_decimal::Decimal, quantity: rust_decimal::Decimal, side: Side, order_type: OrderType) -> Order {
-    Order::new(id, price, quantity, side, order_type)
+    Order::new(id, 1, id, price, quantity, side, order_type)
 }
 
 
@@ -190,4 +190,37 @@ fn test_price_time_priority() {
     assert_eq!(trades[2].maker_order_id, 2, "Third trade should be against later order at lower price");
     assert_eq!(trades[2].price, dec!(100.0));
     assert_eq!(trades[2].quantity, dec!(10.0));
+}
+
+#[test]
+fn test_replay_is_deterministic() {
+    let mut run1 = MatchingEngine::new();
+    let mut run2 = MatchingEngine::new();
+    let stream = vec![
+        create_test_order(1, dec!(100.0), dec!(10.0), Side::Bid, OrderType::Limit),
+        create_test_order(2, dec!(99.0), dec!(4.0), Side::Bid, OrderType::Limit),
+        create_test_order(3, dec!(100.0), dec!(3.0), Side::Ask, OrderType::Limit),
+        create_test_order(4, dec!(100.0), dec!(7.0), Side::Ask, OrderType::Limit),
+    ];
+    for order in &stream {
+        run1.place_order(order.clone());
+        run2.place_order(order.clone());
+    }
+    assert_eq!(run1.get_order_book(10), run2.get_order_book(10));
+    assert_eq!(run1.get_trade_history(None), run2.get_trade_history(None));
+}
+
+#[test]
+fn test_duplicate_sequence_orders_still_fifo_by_arrival() {
+    let mut book = MatchingEngine::new();
+    let mut first = create_test_order(1, dec!(100.0), dec!(5.0), Side::Bid, OrderType::Limit);
+    first.sequence = 42;
+    let mut second = create_test_order(2, dec!(100.0), dec!(5.0), Side::Bid, OrderType::Limit);
+    second.sequence = 42;
+    book.place_order(first);
+    book.place_order(second);
+    book.place_order(create_test_order(3, dec!(100.0), dec!(10.0), Side::Ask, OrderType::Limit));
+    let trades = book.get_trade_history(None);
+    assert_eq!(trades[0].maker_order_id, 1);
+    assert_eq!(trades[1].maker_order_id, 2);
 }
