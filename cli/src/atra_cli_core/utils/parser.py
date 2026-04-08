@@ -7,6 +7,7 @@ def create_parser():
                        help='Output format (default: csv)')
     parser.add_argument('--docker', action='store_true', help='Use Docker for execution')
     parser.add_argument('--local', action='store_true', help='Force local execution')
+    parser.add_argument('--instrument', type=int, default=1, help='Instrument ID (default: 1)')
 
     subparsers = parser.add_subparsers(dest='command')
 

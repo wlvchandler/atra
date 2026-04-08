@@ -66,7 +66,7 @@ impl Order {
             side,
             order_type,
             status: OrderStatus::Pending,
-            timestamp: None,
+            timestamp: Some(Utc::now()),
             ingress_timestamp_ns: None,
             idempotency_key: None,
         }

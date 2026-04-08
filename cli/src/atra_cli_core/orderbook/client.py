@@ -5,7 +5,7 @@ from typing import Optional, Dict
 
 from atra_cli_core.generated.orderbook_pb2 import (
     OrderRequest, GetOrderBookRequest, GetOrderStatusRequest,
-    GetTradeHistoryRequest, Side, OrderType, CancelOrderRequest
+    GetTradeHistoryRequest, Side, OrderType, CancelOrderRequest, DecimalValue
 )
 from atra_cli_core.generated.orderbook_pb2_grpc import OrderBookServiceStub
 
@@ -35,25 +35,31 @@ class OrderBookClient:
     def place_order(self, order: Dict):
         request = OrderRequest(
             id=order['id'],
-            price=str(Decimal(order['price'])),
-            quantity=str(Decimal(order['quantity'])),
+            price=self._to_decimal_value(order['price']),
+            quantity=self._to_decimal_value(order['quantity']),
             side=Side.BID if order['side'].upper() == "BID" else Side.ASK,
-            order_type=OrderType.LIMIT if order['type'].upper() == "LIMIT" else OrderType.MARKET
+            order_type=OrderType.LIMIT if order['type'].upper() == "LIMIT" else OrderType.MARKET,
+            instrument_id=order['instrument_id'],
         )
         response = self.stub.place_order(request)
         return self.formatter.format_order_response(response)
 
-    def cancel_order(self, order_id: int):
-        request = CancelOrderRequest(order_id=order_id)
+    def cancel_order(self, order_id: int, instrument_id: int):
+        request = CancelOrderRequest(order_id=order_id, instrument_id=instrument_id)
         response = self.stub.cancel_order(request)
         return self.formatter.format_cancel_response(response)
 
-    def get_orderbook(self, depth: int):
-        request = GetOrderBookRequest(depth=depth)
+    def get_orderbook(self, depth: int, instrument_id: int):
+        request = GetOrderBookRequest(depth=depth, instrument_id=instrument_id)
         response = self.stub.get_order_book(request)
         return self.formatter.format_orderbook(response, depth)
 
-    def get_trades(self, limit: int):
-        request = GetTradeHistoryRequest(limit=limit)
+    def get_trades(self, limit: int, instrument_id: int):
+        request = GetTradeHistoryRequest(limit=limit, instrument_id=instrument_id)
         response = self.stub.get_trade_history(request)
         return self.formatter.format_trades(response, limit)
+
+    def _to_decimal_value(self, value) -> DecimalValue:
+        dec = Decimal(str(value))
+        scaled = int(dec * Decimal("100000000"))
+        return DecimalValue(units=scaled, scale=8)

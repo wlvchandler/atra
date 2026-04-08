@@ -9,6 +9,10 @@ class OrderBookFormatter:
         """
         self.output_format = output_format
 
+    @staticmethod
+    def _decimal_to_str(value):
+        return str(Decimal(value.units) / (Decimal(10) ** value.scale))
+
     def format_order_response(self, response):
         if self.output_format == 'json':
             return json.dumps({
@@ -34,10 +38,10 @@ class OrderBookFormatter:
     def format_orderbook(self, response, depth):
         if self.output_format == 'json':
             return json.dumps({
-                "bids": [{"price": level.price, "quantity": level.quantity}
-                        for level in sorted(response.bids, key=lambda x: Decimal(x.price), reverse=True)],
-                "asks": [{"price": level.price, "quantity": level.quantity}
-                        for level in sorted(response.asks, key=lambda x: Decimal(x.price))]
+                "bids": [{"price": self._decimal_to_str(level.price), "quantity": self._decimal_to_str(level.quantity)}
+                        for level in sorted(response.bids, key=lambda x: Decimal(self._decimal_to_str(x.price)), reverse=True)],
+                "asks": [{"price": self._decimal_to_str(level.price), "quantity": self._decimal_to_str(level.quantity)}
+                        for level in sorted(response.asks, key=lambda x: Decimal(self._decimal_to_str(x.price)))]
             })
         elif self.output_format == 'pretty':
             output = [
@@ -46,26 +50,26 @@ class OrderBookFormatter:
                 "-" * 30
             ]
 
-            for level in sorted(response.bids, key=lambda x: Decimal(x.price), reverse=True):
-                price = Decimal(level.price).quantize(Decimal('0.01'))
-                quantity = Decimal(level.quantity).quantize(Decimal('0.01'))
+            for level in sorted(response.bids, key=lambda x: Decimal(self._decimal_to_str(x.price)), reverse=True):
+                price = Decimal(self._decimal_to_str(level.price)).quantize(Decimal('0.01'))
+                quantity = Decimal(self._decimal_to_str(level.quantity)).quantize(Decimal('0.01'))
                 output.append(f"{price:>10} {quantity:>10} {'BID':>6}")
 
             output.append("-" * 30)
 
-            for level in sorted(response.asks, key=lambda x: Decimal(x.price)):
-                price = Decimal(level.price).quantize(Decimal('0.01'))
-                quantity = Decimal(level.quantity).quantize(Decimal('0.01'))
+            for level in sorted(response.asks, key=lambda x: Decimal(self._decimal_to_str(x.price))):
+                price = Decimal(self._decimal_to_str(level.price)).quantize(Decimal('0.01'))
+                quantity = Decimal(self._decimal_to_str(level.quantity)).quantize(Decimal('0.01'))
                 output.append(f"{price:>10} {quantity:>10} {'ASK':>6}")
 
             return "\n".join(output)
         else:  # csv format
             lines = []
             # {type,side,price,quantity}
-            for level in sorted(response.bids, key=lambda x: Decimal(x.price), reverse=True):
-                lines.append(f"level,bid,{level.price},{level.quantity}")
-            for level in sorted(response.asks, key=lambda x: Decimal(x.price)):
-                lines.append(f"level,ask,{level.price},{level.quantity}")
+            for level in sorted(response.bids, key=lambda x: Decimal(self._decimal_to_str(x.price)), reverse=True):
+                lines.append(f"level,bid,{self._decimal_to_str(level.price)},{self._decimal_to_str(level.quantity)}")
+            for level in sorted(response.asks, key=lambda x: Decimal(self._decimal_to_str(x.price))):
+                lines.append(f"level,ask,{self._decimal_to_str(level.price)},{self._decimal_to_str(level.quantity)}")
             return "\n".join(lines)
 
     def format_trades(self, response, limit):
@@ -73,9 +77,9 @@ class OrderBookFormatter:
             return json.dumps({
                 "trades": [{
                     "timestamp": trade.timestamp.seconds + trade.timestamp.nanos / 1e9,
-                    "price": trade.price,
-                    "quantity": trade.quantity,
-                    "side": "BID" if trade.side == 0 else "ASK",
+                    "price": self._decimal_to_str(trade.price),
+                    "quantity": self._decimal_to_str(trade.quantity),
+                    "side": "BID" if trade.side == 1 else "ASK",
                     "maker_order_id": trade.maker_order_id,
                     "taker_order_id": trade.taker_order_id
                 } for trade in response.trades]
@@ -89,9 +93,9 @@ class OrderBookFormatter:
 
             for trade in response.trades:
                 ts = datetime.fromtimestamp(trade.timestamp.seconds + trade.timestamp.nanos / 1e9)
-                price = Decimal(trade.price).quantize(Decimal('0.01'))
-                quantity = Decimal(trade.quantity).quantize(Decimal('0.01'))
-                side = "BID" if trade.side == 0 else "ASK"
+                price = Decimal(self._decimal_to_str(trade.price)).quantize(Decimal('0.01'))
+                quantity = Decimal(self._decimal_to_str(trade.quantity)).quantize(Decimal('0.01'))
+                side = "BID" if trade.side == 1 else "ASK"
 
                 output.append(
                     f"{ts.strftime('%Y-%m-%d %H:%M:%S'):>19} "
@@ -106,8 +110,8 @@ class OrderBookFormatter:
             # {type,timestamp,price,quantity,side,maker_id,taker_id}
             return "\n".join(
                 f"trade,{trade.timestamp.seconds + trade.timestamp.nanos / 1e9},"
-                f"{trade.price},{trade.quantity},"
-                f"{'bid' if trade.side == 0 else 'ask'},"
+                f"{self._decimal_to_str(trade.price)},{self._decimal_to_str(trade.quantity)},"
+                f"{'bid' if trade.side == 1 else 'ask'},"
                 f"{trade.maker_order_id},{trade.taker_order_id}"
                 for trade in response.trades
             )

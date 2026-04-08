@@ -19,7 +19,7 @@ def parse_order(order_str: str) -> Tuple[str, float, float]:
     else:
         return ('market', 0.0, float(order_str))
 
-def parse_compound_orders(args: List[str]) -> List[Dict]:
+def parse_compound_orders(args: List[str], instrument_id: int) -> List[Dict]:
     orders = []
     current_side = None
 
@@ -42,7 +42,8 @@ def parse_compound_orders(args: List[str]) -> List[Dict]:
                 'side': current_side,
                 'type': order_type,
                 'price': price,
-                'quantity': quantity
+                'quantity': quantity,
+                'instrument_id': instrument_id,
             })
         except ValueError:
             raise ValueError(f"Invalid order format: {args[i]}")
@@ -71,18 +72,18 @@ def run_cli(args=None):
     
     try:
         if parsed_args.command == 'cancel':
-            print(client.cancel_order(parsed_args.order_id))
+            print(client.cancel_order(parsed_args.order_id, parsed_args.instrument))
         elif parsed_args.command == 'book':
-            print(client.get_orderbook(parsed_args.depth))
+            print(client.get_orderbook(parsed_args.depth, parsed_args.instrument))
         elif parsed_args.command == 'trades':
-            print(client.get_trades(parsed_args.limit))
+            print(client.get_trades(parsed_args.limit, parsed_args.instrument))
         elif parsed_args.command == 'orders':
-            orders = parse_compound_orders(parsed_args.orders)
+            orders = parse_compound_orders(parsed_args.orders, parsed_args.instrument)
             for order in orders:
                 print(client.place_order(order))
         elif parsed_args.command in ['buy', 'sell']:
             full_args = [parsed_args.command] + parsed_args.orders
-            orders = parse_compound_orders(full_args)
+            orders = parse_compound_orders(full_args, parsed_args.instrument)
             for order in orders:
                 print(client.place_order(order))
     except ValueError as e:

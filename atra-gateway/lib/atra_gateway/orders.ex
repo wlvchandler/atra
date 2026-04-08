@@ -26,9 +26,9 @@ defmodule AtraGateway.Orders do
   def from_proto(response) do
     %{
       id: response.id,
-      price: String.to_float(response.price),
-      quantity: String.to_float(response.quantity),
-      remaining_quantity: String.to_float(response.remaining_quantity),
+      price: decimal_from_proto(response.price),
+      quantity: decimal_from_proto(response.quantity),
+      remaining_quantity: decimal_from_proto(response.remaining_quantity),
       side: atom_from_proto_side(response.side),
       type: atom_from_proto_order_type(response.order_type),
       status: atom_from_proto_status(response.status),
@@ -40,16 +40,29 @@ defmodule AtraGateway.Orders do
     }
   end
 
-  defp atom_from_proto_side(0), do: :bid
-  defp atom_from_proto_side(1), do: :ask
+  defp atom_from_proto_side(:BID), do: :bid
+  defp atom_from_proto_side(:ASK), do: :ask
+  defp atom_from_proto_side(1), do: :bid
+  defp atom_from_proto_side(2), do: :ask
 
-  defp atom_from_proto_order_type(0), do: :limit
-  defp atom_from_proto_order_type(1), do: :market
+  defp atom_from_proto_order_type(:LIMIT), do: :limit
+  defp atom_from_proto_order_type(:MARKET), do: :market
+  defp atom_from_proto_order_type(1), do: :limit
+  defp atom_from_proto_order_type(2), do: :market
 
-  defp atom_from_proto_status(0), do: :pending
-  defp atom_from_proto_status(1), do: :partially_filled
-  defp atom_from_proto_status(2), do: :filled
-  defp atom_from_proto_status(3), do: :cancelled
+  defp atom_from_proto_status(:PENDING), do: :pending
+  defp atom_from_proto_status(:PARTIALLY_FILLED), do: :partially_filled
+  defp atom_from_proto_status(:FILLED), do: :filled
+  defp atom_from_proto_status(:CANCELLED), do: :cancelled
+  defp atom_from_proto_status(1), do: :pending
+  defp atom_from_proto_status(2), do: :partially_filled
+  defp atom_from_proto_status(3), do: :filled
+  defp atom_from_proto_status(4), do: :cancelled
+
+  defp decimal_from_proto(nil), do: 0.0
+  defp decimal_from_proto(%{units: units, scale: scale}) do
+    units / :math.pow(10, scale)
+  end
 
   defp proto_timestamp_to_datetime(%{seconds: seconds, nanos: nanos}) do
     DateTime.from_unix!(seconds, :second)

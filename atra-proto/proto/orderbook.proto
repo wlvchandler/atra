@@ -6,16 +6,38 @@ import "google/protobuf/timestamp.proto";
 service OrderBookService {
     rpc place_order         (OrderRequest)           returns (OrderResponse);
     rpc cancel_order        (CancelOrderRequest)     returns (OrderResponse);
+    rpc cancel_orders       (CancelOrderBatchRequest) returns (CancelOrderBatchResponse);
     rpc get_order_book      (GetOrderBookRequest)    returns (OrderBookResponse);
+    rpc stream_order_book   (StreamOrderBookRequest) returns (stream OrderBookResponse);
     rpc get_order_status    (GetOrderStatusRequest)  returns (OrderResponse);
     rpc get_trade_history   (GetTradeHistoryRequest) returns (TradeHistoryResponse);
+    rpc stream_trade_history (StreamTradeHistoryRequest) returns (stream Trade);
     rpc place_orders        (OrderBatchRequest)      returns (OrderBatchResponse);
+}
+
+message DecimalValue {
+    int64 units = 1;
+    int32 scale = 2;
+}
+
+message ErrorDetail {
+    ErrorCode code = 1;
+    string message = 2;
+}
+
+enum ErrorCode {
+    ERROR_CODE_UNSPECIFIED = 0;
+    INVALID_ARGUMENT = 1;
+    NOT_FOUND = 2;
+    FAILED_PRECONDITION = 3;
+    ALREADY_EXISTS = 4;
+    INTERNAL = 5;
 }
 
 message OrderRequest {
     uint64 id = 1;
-    string price = 2;
-    string quantity = 3;
+    DecimalValue price = 2;
+    DecimalValue quantity = 3;
     Side side = 4;
     OrderType order_type = 5;
     uint32 instrument_id = 6;
@@ -26,9 +48,9 @@ message OrderRequest {
 
 message OrderResponse {
     uint64 id = 1;
-    string price = 2;
-    string quantity = 3;
-    string remaining_quantity = 4;
+    DecimalValue price = 2;
+    DecimalValue quantity = 3;
+    DecimalValue remaining_quantity = 4;
     Side side = 5;
     OrderType order_type = 6;
     OrderStatus status = 7;
@@ -41,15 +63,41 @@ message OrderResponse {
 
 message CancelOrderRequest {
     uint64 order_id = 1;
+    uint32 instrument_id = 2;
+    optional string idempotency_key = 3;
+}
+
+message CancelOrderBatchRequest {
+    repeated CancelOrderRequest requests = 1;
+}
+
+message CancelOrderBatchItemResult {
+    uint64 order_id = 1;
+    uint32 instrument_id = 2;
+    oneof result {
+        OrderResponse order = 3;
+        ErrorDetail error = 4;
+    }
+}
+
+message CancelOrderBatchResponse {
+    repeated CancelOrderBatchItemResult results = 1;
 }
 
 message GetOrderBookRequest {
     uint32 depth = 1;
+    uint32 instrument_id = 2;
+}
+
+message StreamOrderBookRequest {
+    uint32 depth = 1;
+    uint32 instrument_id = 2;
+    uint32 interval_ms = 3;
 }
 
 message OrderBookLevel {
-    string price = 1;
-    string quantity = 2;
+    DecimalValue price = 1;
+    DecimalValue quantity = 2;
 }
 
 message OrderBookResponse {
@@ -59,17 +107,25 @@ message OrderBookResponse {
 
 message GetOrderStatusRequest {
     uint64 order_id = 1;
+    uint32 instrument_id = 2;
 }
 
 message GetTradeHistoryRequest {
     uint32 limit = 1;
+    uint32 instrument_id = 2;
+}
+
+message StreamTradeHistoryRequest {
+    uint32 limit = 1;
+    uint32 instrument_id = 2;
+    uint32 interval_ms = 3;
 }
 
 message Trade {
     uint64 maker_order_id = 1;
     uint64 taker_order_id = 2;
-    string price = 3;
-    string quantity = 4;
+    DecimalValue price = 3;
+    DecimalValue quantity = 4;
     Side side = 5;
     google.protobuf.Timestamp timestamp = 6;
     uint64 maker_sequence_number = 7;
@@ -83,25 +139,44 @@ message TradeHistoryResponse {
 
 message OrderBatchRequest {
     repeated OrderRequest orders = 1;
+    BatchMode mode = 2;
 }
 
 message OrderBatchResponse {
-    repeated OrderResponse orders = 1;
+    repeated OrderBatchItemResult results = 1;
+}
+
+enum BatchMode {
+    BATCH_MODE_UNSPECIFIED = 0;
+    PARTIAL_OK = 1;
+    ALL_OR_NONE = 2;
+}
+
+message OrderBatchItemResult {
+    uint64 order_id = 1;
+    uint32 instrument_id = 2;
+    oneof result {
+        OrderResponse order = 3;
+        ErrorDetail error = 4;
+    }
 }
 
 enum Side {
-    BID = 0;
-    ASK = 1;
+    SIDE_UNSPECIFIED = 0;
+    BID = 1;
+    ASK = 2;
 }
 
 enum OrderType {
-    LIMIT = 0;
-    MARKET = 1;
+    ORDER_TYPE_UNSPECIFIED = 0;
+    LIMIT = 1;
+    MARKET = 2;
 }
 
 enum OrderStatus {
-    PENDING = 0;
-    PARTIALLY_FILLED = 1;
-    FILLED = 2;
-    CANCELLED = 3;
+    ORDER_STATUS_UNSPECIFIED = 0;
+    PENDING = 1;
+    PARTIALLY_FILLED = 2;
+    FILLED = 3;
+    CANCELLED = 4;
 }
