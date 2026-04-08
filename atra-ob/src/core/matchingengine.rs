@@ -97,9 +97,12 @@ impl MatchingEngine {
             trades.push_back(Trade::new(
                 resting_order.id,
                 matched_order.id,
+                resting_order.sequence,
+                matched_order.sequence,
                 price,
                 fill_quantity,
                 matched_order.side,
+                matched_order.ingress_timestamp_ns,
             ));
 
 	    // ... reflect the qty changes...

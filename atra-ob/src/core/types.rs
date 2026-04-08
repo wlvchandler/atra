@@ -1,5 +1,5 @@
-use rust_decimal::Decimal;
 use chrono::{DateTime, Utc};
+use rust_decimal::Decimal;
 use std::cmp::Ordering;
 
 //
@@ -33,24 +33,43 @@ pub enum OrderStatus {
 #[derive(Debug, Clone, PartialEq, Eq)] // def dont want copy
 pub struct Order {
     pub id: u64,
+    pub instrument_id: u32,
+    pub sequence: u64,
     pub price: Decimal,
     pub quantity: Decimal,
     pub remaining_quantity: Decimal,
     pub side: Side,
     pub order_type: OrderType,
     pub status: OrderStatus,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: Option<DateTime<Utc>>,
+    pub ingress_timestamp_ns: Option<u64>,
+    pub idempotency_key: Option<String>,
 }
 
 impl Order {
-    pub fn new(id: u64, price: Decimal, quantity: Decimal, side: Side, order_type: OrderType) -> Self {
-	Self {
-	    id, price, quantity,
-	    remaining_quantity: quantity,
-	    side, order_type,
-	    status: OrderStatus::Pending,
-	    timestamp: Utc::now(),
-	}
+    pub fn new(
+        id: u64,
+        instrument_id: u32,
+        sequence: u64,
+        price: Decimal,
+        quantity: Decimal,
+        side: Side,
+        order_type: OrderType,
+    ) -> Self {
+        Self {
+            id,
+            instrument_id,
+            sequence,
+            price,
+            quantity,
+            remaining_quantity: quantity,
+            side,
+            order_type,
+            status: OrderStatus::Pending,
+            timestamp: None,
+            ingress_timestamp_ns: None,
+            idempotency_key: None,
+        }
     }
 }
 
@@ -58,7 +77,7 @@ impl Order {
 impl Ord for Order {
     fn cmp(&self, other: &Self) -> Ordering {
 	match self.price.cmp(&other.price) {
-	    Ordering::Equal => self.timestamp.cmp(&other.timestamp),
+	    Ordering::Equal => self.sequence.cmp(&other.sequence),
 	    ord => match self.side {
 		Side::Bid => ord.reverse(),
 		Side::Ask => ord,

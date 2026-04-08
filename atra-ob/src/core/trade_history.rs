@@ -8,21 +8,36 @@ use crate::core::Side;
 pub struct Trade {
     pub maker_order_id: u64,
     pub taker_order_id: u64,
+    pub maker_sequence: u64,
+    pub taker_sequence: u64,
     pub price: Decimal,
     pub quantity: Decimal,
     pub side: Side,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: Option<DateTime<Utc>>,
+    pub ingress_timestamp_ns: Option<u64>,
 }
 
 impl Trade {
-    pub fn new(maker_order_id: u64, taker_order_id: u64, price: Decimal, quantity: Decimal, side: Side) -> Self {
+    pub fn new(
+        maker_order_id: u64,
+        taker_order_id: u64,
+        maker_sequence: u64,
+        taker_sequence: u64,
+        price: Decimal,
+        quantity: Decimal,
+        side: Side,
+        ingress_timestamp_ns: Option<u64>,
+    ) -> Self {
         Self {
             maker_order_id,
             taker_order_id,
+            maker_sequence,
+            taker_sequence,
             price,
             quantity,
             side,
-            timestamp: Utc::now(),
+            timestamp: None,
+            ingress_timestamp_ns,
         }
     }
 }
