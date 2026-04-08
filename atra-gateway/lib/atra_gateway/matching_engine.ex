@@ -84,8 +84,8 @@ defmodule AtraGateway.MatchingEngine do
 
       request = %Orderbook.OrderRequest{
           id: params.id,
-          price: to_string(params.price),
-          quantity: to_string(params.quantity),
+          price: to_proto_decimal(params.price),
+          quantity: to_proto_decimal(params.quantity),
           side: proto_side(params.side),
           order_type: proto_order_type(params.type),
           instrument_id: params.instrument_id,
@@ -116,4 +116,9 @@ defmodule AtraGateway.MatchingEngine do
 
   defp proto_order_type(:limit), do: :LIMIT
   defp proto_order_type(:market), do: :MARKET
+
+  defp to_proto_decimal(value) do
+    scaled = round(value * 100_000_000)
+    %Orderbook.DecimalValue{units: scaled, scale: 8}
+  end
 end

@@ -36,7 +36,7 @@ impl Trade {
             price,
             quantity,
             side,
-            timestamp: None,
+            timestamp: Some(Utc::now()),
             ingress_timestamp_ns,
         }
     }

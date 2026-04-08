@@ -2,11 +2,8 @@ defmodule AtraGateway.Server do
   use GRPC.Server, service: Orderbook.OrderBookService.Service
   require Logger
 
-  defp parse_numeric(str) do
-    case Float.parse(str) do
-      {float, _} -> float
-      :error -> raise ArgumentError, "Invalid numeric format: #{inspect(str)}"
-    end
+  defp parse_numeric(%{units: units, scale: scale}) do
+    units / :math.pow(10, scale)
   end
   
   def place_order(request, _stream) do
@@ -28,7 +25,7 @@ defmodule AtraGateway.Server do
   end
 
   def cancel_order(request, _stream) do
-    Logger.info("atra.gateway.request.cancel_order id:#{inspect(request.order_id)}")
+    Logger.info("atra.gateway.request.cancel_order id:#{inspect(request.order_id)} instrument:#{inspect(request.instrument_id)}")
     :poolboy.transaction(:grpc_pool, fn pid ->
       channel = AtraGateway.GrpcConnection.get_channel(pid)
       case Orderbook.OrderBookService.Stub.cancel_order(channel, request) do
@@ -40,8 +37,21 @@ defmodule AtraGateway.Server do
     end)
   end
 
+  def cancel_orders(request, _stream) do
+    Logger.info("atra.gateway.request.cancel_orders batch:#{length(request.requests)}")
+    :poolboy.transaction(:grpc_pool, fn pid ->
+      channel = AtraGateway.GrpcConnection.get_channel(pid)
+      case Orderbook.OrderBookService.Stub.cancel_orders(channel, request) do
+        {:ok, response} -> response
+        {:error, reason} ->
+          Logger.error("atra.gateway.error.request request:cancel_orders note:'#{inspect(reason)}'")
+          raise GRPC.RPCError, status: :internal, message: "Internal error"
+      end
+    end)
+  end
+
   def get_order_book(request, _stream) do
-    Logger.info("atra.gateway.request.get_order_book depth:#{inspect(request.depth)}")
+    Logger.info("atra.gateway.request.get_order_book depth:#{inspect(request.depth)} instrument:#{inspect(request.instrument_id)}")
     :poolboy.transaction(:grpc_pool, fn pid ->
       channel = AtraGateway.GrpcConnection.get_channel(pid)
       case Orderbook.OrderBookService.Stub.get_order_book(channel, request) do
@@ -54,7 +64,7 @@ defmodule AtraGateway.Server do
   end
 
   def get_order_status(request, _stream) do
-    Logger.info("atra.gateway.request.order_status id:#{inspect(request.order_id)}")
+    Logger.info("atra.gateway.request.order_status id:#{inspect(request.order_id)} instrument:#{inspect(request.instrument_id)}")
     :poolboy.transaction(:grpc_pool, fn pid ->
       channel = AtraGateway.GrpcConnection.get_channel(pid)
       case Orderbook.OrderBookService.Stub.get_order_status(channel, request) do
@@ -67,7 +77,7 @@ defmodule AtraGateway.Server do
   end
 
   def get_trade_history(request, _stream) do
-    Logger.info("atra.gateway.request.get_trade_history limit:#{inspect(request.limit)}")
+    Logger.info("atra.gateway.request.get_trade_history limit:#{inspect(request.limit)} instrument:#{inspect(request.instrument_id)}")
     :poolboy.transaction(:grpc_pool, fn pid ->
       channel = AtraGateway.GrpcConnection.get_channel(pid)
       case Orderbook.OrderBookService.Stub.get_trade_history(channel, request) do
@@ -77,6 +87,14 @@ defmodule AtraGateway.Server do
           raise GRPC.RPCError, status: :internal, message: "Internal error"
       end
     end)
+  end
+
+  def stream_order_book(_request, _stream) do
+    raise GRPC.RPCError, status: :unimplemented, message: "stream_order_book is not yet proxied by gateway"
+  end
+
+  def stream_trade_history(_request, _stream) do
+    raise GRPC.RPCError, status: :unimplemented, message: "stream_trade_history is not yet proxied by gateway"
   end
 
   def place_orders(request, _stream) do
@@ -116,9 +134,9 @@ defmodule AtraGateway.Server do
   defp to_proto_response(response) do
     %Orderbook.OrderResponse{
       id: response.id,
-      price: to_string(response.price),
-      quantity: to_string(response.quantity),
-      remaining_quantity: to_string(response.remaining_quantity),
+      price: to_proto_decimal(response.price),
+      quantity: to_proto_decimal(response.quantity),
+      remaining_quantity: to_proto_decimal(response.remaining_quantity),
       side: proto_side(response.side),
       order_type: proto_order_type(response.type),
       status: proto_status(response.status),
@@ -139,5 +157,10 @@ defmodule AtraGateway.Server do
   defp proto_status(:partially_filled), do: :PARTIALLY_FILLED
   defp proto_status(:filled), do: :FILLED
   defp proto_status(:cancelled), do: :CANCELLED
+
+  defp to_proto_decimal(value) do
+    scaled = round(value * 100_000_000)
+    %Orderbook.DecimalValue{units: scaled, scale: 8}
+  end
 end
 
