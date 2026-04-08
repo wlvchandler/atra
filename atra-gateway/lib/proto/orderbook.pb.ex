@@ -37,6 +37,10 @@ defmodule Orderbook.OrderRequest do
   field :quantity, 3, type: :string
   field :side, 4, type: Orderbook.Side, enum: true
   field :order_type, 5, type: Orderbook.OrderType, json_name: "orderType", enum: true
+  field :instrument_id, 6, type: :uint32, json_name: "instrumentId"
+  field :sequence_number, 7, type: :uint64, json_name: "sequenceNumber"
+  field :ingress_timestamp_ns, 8, type: :uint64, json_name: "ingressTimestampNs", optional: true
+  field :idempotency_key, 9, type: :string, json_name: "idempotencyKey", optional: true
 end
 
 defmodule Orderbook.OrderResponse do
@@ -52,6 +56,10 @@ defmodule Orderbook.OrderResponse do
   field :order_type, 6, type: Orderbook.OrderType, json_name: "orderType", enum: true
   field :status, 7, type: Orderbook.OrderStatus, enum: true
   field :timestamp, 8, type: Google.Protobuf.Timestamp
+  field :instrument_id, 9, type: :uint32, json_name: "instrumentId"
+  field :sequence_number, 10, type: :uint64, json_name: "sequenceNumber"
+  field :ingress_timestamp_ns, 11, type: :uint64, json_name: "ingressTimestampNs", optional: true
+  field :idempotency_key, 12, type: :string, json_name: "idempotencyKey", optional: true
 end
 
 defmodule Orderbook.CancelOrderRequest do
@@ -115,6 +123,9 @@ defmodule Orderbook.Trade do
   field :quantity, 4, type: :string
   field :side, 5, type: Orderbook.Side, enum: true
   field :timestamp, 6, type: Google.Protobuf.Timestamp
+  field :maker_sequence_number, 7, type: :uint64, json_name: "makerSequenceNumber"
+  field :taker_sequence_number, 8, type: :uint64, json_name: "takerSequenceNumber"
+  field :ingress_timestamp_ns, 9, type: :uint64, json_name: "ingressTimestampNs", optional: true
 end
 
 defmodule Orderbook.TradeHistoryResponse do

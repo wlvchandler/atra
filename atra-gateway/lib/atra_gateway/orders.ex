@@ -6,7 +6,7 @@ defmodule AtraGateway.Orders do
   @doc """
   Creates a new order map with required fields.
   """
-  def new(price, quantity, side, type \\ :limit) do
+  def new(price, quantity, side, type \\ :limit, instrument_id \\ 1) do
     # we will want a better ID generation strategy
     id = System.unique_integer([:positive, :monotonic])
 
@@ -14,6 +14,7 @@ defmodule AtraGateway.Orders do
       id: id,
       price: price,
       quantity: quantity,
+      instrument_id: instrument_id,
       side: side,
       type: type
     }
@@ -31,7 +32,11 @@ defmodule AtraGateway.Orders do
       side: atom_from_proto_side(response.side),
       type: atom_from_proto_order_type(response.order_type),
       status: atom_from_proto_status(response.status),
-      timestamp: proto_timestamp_to_datetime(response.timestamp)
+      timestamp: proto_timestamp_to_datetime(response.timestamp),
+      instrument_id: response.instrument_id,
+      sequence_number: response.sequence_number,
+      ingress_timestamp_ns: response.ingress_timestamp_ns,
+      idempotency_key: response.idempotency_key
     }
   end
 
