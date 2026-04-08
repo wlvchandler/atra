@@ -18,6 +18,10 @@ message OrderRequest {
     string quantity = 3;
     Side side = 4;
     OrderType order_type = 5;
+    uint32 instrument_id = 6;
+    uint64 sequence_number = 7;
+    optional uint64 ingress_timestamp_ns = 8;
+    optional string idempotency_key = 9;
 }
 
 message OrderResponse {
@@ -29,6 +33,10 @@ message OrderResponse {
     OrderType order_type = 6;
     OrderStatus status = 7;
     google.protobuf.Timestamp timestamp = 8;
+    uint32 instrument_id = 9;
+    uint64 sequence_number = 10;
+    optional uint64 ingress_timestamp_ns = 11;
+    optional string idempotency_key = 12;
 }
 
 message CancelOrderRequest {
@@ -64,6 +72,9 @@ message Trade {
     string quantity = 4;
     Side side = 5;
     google.protobuf.Timestamp timestamp = 6;
+    uint64 maker_sequence_number = 7;
+    uint64 taker_sequence_number = 8;
+    optional uint64 ingress_timestamp_ns = 9;
 }
 
 message TradeHistoryResponse {

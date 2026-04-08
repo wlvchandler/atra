@@ -11,23 +11,16 @@ defmodule AtraGateway.Server do
   
   def place_order(request, _stream) do
     Logger.info("atra.gateway.request.place_order id:#{inspect(request.id)}")
+    instrument_id = if request.instrument_id == 0, do: 1, else: request.instrument_id
     case AtraGateway.MatchingEngine.place_order(AtraGateway.Orders.new(
       parse_numeric(request.price),
       parse_numeric(request.quantity),
       atom_from_proto_side(request.side),
-      atom_from_proto_order_type(request.order_type)
+      atom_from_proto_order_type(request.order_type),
+      instrument_id
     )) do
-      {:ok, _} ->
-        # forwarding messages directly to the matcher isn't good practice. we'll use INQ later.
-        :poolboy.transaction(:grpc_pool, fn pid ->
-          channel = AtraGateway.GrpcConnection.get_channel(pid)
-          case Orderbook.OrderBookService.Stub.place_order(channel, request) do
-            {:ok, response} -> response
-            {:error, reason} ->
-	      Logger.error("atra.gateway.error.request  request:place_order note:'#{inspect(reason)}'")
-              raise GRPC.RPCError, status: :internal, message: "Internal error"
-          end
-        end)
+      {:ok, response} ->
+        to_proto_response(response)
       {:error, reason} ->
 	Logger.error("atra.gateway.error.request  request:place_order note:'#{inspect(reason)}'")
         raise GRPC.RPCError, status: :internal, message: "Internal error"
@@ -88,15 +81,29 @@ defmodule AtraGateway.Server do
 
   def place_orders(request, _stream) do
     Logger.info("atra.gateway.request.place_order batch:#{length(request.orders)}")
-    :poolboy.transaction(:grpc_pool, fn pid ->
-      channel = AtraGateway.GrpcConnection.get_channel(pid)
-      case Orderbook.OrderBookService.Stub.place_orders(channel, request) do
-        {:ok, response} -> response
-        {:error, reason} ->
-	  Logger.error("atra.gateway.error.request request:place_orders note:'#{inspect(reason)}'")
-          raise GRPC.RPCError, status: :internal, message: "Internal error"
-      end
-    end)
+    orders =
+      request.orders
+      |> Enum.map(fn req ->
+        instrument_id = if req.instrument_id == 0, do: 1, else: req.instrument_id
+        AtraGateway.Orders.new(
+          parse_numeric(req.price),
+          parse_numeric(req.quantity),
+          atom_from_proto_side(req.side),
+          atom_from_proto_order_type(req.order_type),
+          instrument_id
+        )
+      end)
+
+    case AtraGateway.MatchingEngine.place_orders(orders) do
+      {:ok, responses} ->
+        %Orderbook.OrderBatchResponse{
+          orders: Enum.map(responses, &to_proto_response/1)
+        }
+
+      {:error, reason} ->
+        Logger.error("atra.gateway.error.request request:place_orders note:'#{inspect(reason)}'")
+        raise GRPC.RPCError, status: :internal, message: "Internal error"
+    end
   end
 
   # convert proto enums to atoms
@@ -105,5 +112,32 @@ defmodule AtraGateway.Server do
 
   defp atom_from_proto_order_type(:LIMIT), do: :limit
   defp atom_from_proto_order_type(:MARKET), do: :market
+
+  defp to_proto_response(response) do
+    %Orderbook.OrderResponse{
+      id: response.id,
+      price: to_string(response.price),
+      quantity: to_string(response.quantity),
+      remaining_quantity: to_string(response.remaining_quantity),
+      side: proto_side(response.side),
+      order_type: proto_order_type(response.type),
+      status: proto_status(response.status),
+      instrument_id: response.instrument_id,
+      sequence_number: response.sequence_number,
+      ingress_timestamp_ns: response.ingress_timestamp_ns,
+      idempotency_key: response.idempotency_key
+    }
+  end
+
+  defp proto_side(:bid), do: :BID
+  defp proto_side(:ask), do: :ASK
+
+  defp proto_order_type(:limit), do: :LIMIT
+  defp proto_order_type(:market), do: :MARKET
+
+  defp proto_status(:pending), do: :PENDING
+  defp proto_status(:partially_filled), do: :PARTIALLY_FILLED
+  defp proto_status(:filled), do: :FILLED
+  defp proto_status(:cancelled), do: :CANCELLED
 end
 
