@@ -16,6 +16,8 @@ tonic = "0.10"
 prost = "0.12"
 prost-types = "0.12"
 futures = "0.3"
+memmap2 = "0.9.11"
+zerocopy = { version = "0.8.56", features = ["derive"] }
 
 [dev-dependencies]
 assert_matches = "1.5"
